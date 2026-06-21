@@ -5,7 +5,9 @@ import '../../fresh/screens/fresh_list_screen.dart';
 import '../../reports/screens/add_report_screen.dart';
 
 class HomeMapScreen extends StatelessWidget {
-  const HomeMapScreen({super.key});
+  const HomeMapScreen({super.key, this.showBottomNavigationBar = true});
+
+  final bool showBottomNavigationBar;
 
   @override
   Widget build(BuildContext context) {
@@ -46,20 +48,26 @@ class HomeMapScreen extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: _HomeBottomBar(
-        onFreshTap: () {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const FreshListScreen()),
-          );
-        },
-        onProfileTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-          );
-        },
-      ),
+      bottomNavigationBar: showBottomNavigationBar
+          ? _HomeBottomBar(
+              onFreshTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FreshListScreen(),
+                  ),
+                );
+              },
+              onProfileTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileScreen(),
+                  ),
+                );
+              },
+            )
+          : null,
     );
   }
 }

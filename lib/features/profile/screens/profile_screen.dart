@@ -9,7 +9,9 @@ import '../../fresh/screens/fresh_list_screen.dart';
 import '../../home/screens/home_map_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.showBottomNavigationBar = true});
+
+  final bool showBottomNavigationBar;
 
   @override
   Widget build(BuildContext context) {
@@ -54,24 +56,30 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: DurianBottomNav(
-        selectedIndex: 2,
-        onDestinationSelected: (index) {
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const HomeMapScreen()),
-            );
-          }
+      bottomNavigationBar: showBottomNavigationBar
+          ? DurianBottomNav(
+              selectedIndex: 2,
+              onDestinationSelected: (index) {
+                if (index == 0) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HomeMapScreen(),
+                    ),
+                  );
+                }
 
-          if (index == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const FreshListScreen()),
-            );
-          }
-        },
-      ),
+                if (index == 1) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const FreshListScreen(),
+                    ),
+                  );
+                }
+              },
+            )
+          : null,
     );
   }
 }

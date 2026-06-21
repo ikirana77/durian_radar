@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'features/home/screens/home_map_screen.dart';
+import 'features/navigation/screens/main_navigation_screen.dart';
 
 class DurianRadarApp extends StatelessWidget {
   const DurianRadarApp({super.key});
@@ -10,7 +10,7 @@ class DurianRadarApp extends StatelessWidget {
     return const MaterialApp(
       title: 'Durian Radar',
       debugShowCheckedModeBanner: false,
-      home: HomeMapScreen(),
+      home: MainNavigationScreen(),
     );
   }
 }
