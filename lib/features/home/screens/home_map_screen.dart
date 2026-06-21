@@ -1,15 +1,40 @@
 import 'package:flutter/material.dart';
 
-import '../../profile/screens/profile_screen.dart';
-import '../../fresh/screens/fresh_list_screen.dart';
-import '../../reports/screens/add_report_screen.dart';
-import '../../durian/data/dummy_durian_reports.dart';
+import '../../durian/data/durian_report_store.dart';
 import '../../durian/models/durian_report.dart';
+import '../../fresh/screens/fresh_list_screen.dart';
+import '../../profile/screens/profile_screen.dart';
+import '../../reports/screens/add_report_screen.dart';
 
 class HomeMapScreen extends StatelessWidget {
   const HomeMapScreen({super.key, this.showBottomNavigationBar = true});
 
   final bool showBottomNavigationBar;
+
+  String _lowestPriceText(List<DurianReport> reports) {
+    if (reports.isEmpty) {
+      return 'Harga belum dikemaskini';
+    }
+
+    double? lowestPrice;
+    String? lowestPriceLabel;
+
+    for (final report in reports) {
+      final match = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(report.price);
+      final value = match == null ? null : double.tryParse(match.group(1)!);
+
+      if (value != null && (lowestPrice == null || value < lowestPrice)) {
+        lowestPrice = value;
+        lowestPriceLabel = report.price;
+      }
+    }
+
+    if (lowestPriceLabel == null) {
+      return 'Harga belum dikemaskini';
+    }
+
+    return 'Harga serendah $lowestPriceLabel';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,22 +43,32 @@ class HomeMapScreen extends StatelessWidget {
       body: Stack(
         children: [
           const Positioned.fill(child: _IllustratedMapArea()),
-
           const Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: SafeArea(bottom: false, child: _HomeTopPanel()),
           ),
-
           const Positioned(right: 22, bottom: 150, child: _LocateButton()),
-
-          const Positioned(
+          Positioned(
             left: 28,
             bottom: 46,
-            child: SizedBox(width: 270, child: _FloatingSummaryCard()),
+            child: SizedBox(
+              width: 270,
+              child: ValueListenableBuilder<List<DurianReport>>(
+                valueListenable: durianReportStore,
+                builder: (context, reports, child) {
+                  return _FloatingSummaryCard(
+                    totalCount: reports.length,
+                    priceSummary: _lowestPriceText(reports),
+                    latestUpdate: reports.isEmpty
+                        ? 'Belum ada laporan'
+                        : reports.first.updatedTime,
+                  );
+                },
+              ),
+            ),
           ),
-
           Positioned(
             right: 18,
             bottom: 42,
@@ -61,7 +96,7 @@ class HomeMapScreen extends StatelessWidget {
                 );
               },
               onProfileTap: () {
-                Navigator.push(
+                Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
                     builder: (context) => const ProfileScreen(),
@@ -313,6 +348,28 @@ class _QuickChip extends StatelessWidget {
 class _IllustratedMapArea extends StatelessWidget {
   const _IllustratedMapArea();
 
+  static const List<Offset> _markerPositions = [
+    Offset(0.55, 0.32),
+    Offset(0.25, 0.43),
+    Offset(0.71, 0.49),
+    Offset(0.49, 0.60),
+    Offset(0.16, 0.55),
+    Offset(0.76, 0.36),
+    Offset(0.37, 0.36),
+    Offset(0.62, 0.66),
+  ];
+
+  Color _statusColor(DurianStockStatus status) {
+    switch (status) {
+      case DurianStockStatus.available:
+        return _DRColors.freshGreen;
+      case DurianStockStatus.lowStock:
+        return _DRColors.warningYellow;
+      case DurianStockStatus.soldOut:
+        return _DRColors.soldOutRed;
+    }
+  }
+
   void _showMarkerDetail(BuildContext context, {required DurianReport report}) {
     final statusColor = _statusColor(report.stockStatus);
 
@@ -334,17 +391,6 @@ class _IllustratedMapArea extends StatelessWidget {
     );
   }
 
-  Color _statusColor(DurianStockStatus status) {
-    switch (status) {
-      case DurianStockStatus.available:
-        return _DRColors.freshGreen;
-      case DurianStockStatus.lowStock:
-        return _DRColors.warningYellow;
-      case DurianStockStatus.soldOut:
-        return _DRColors.soldOutRed;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -353,58 +399,44 @@ class _IllustratedMapArea extends StatelessWidget {
         builder: (context, constraints) {
           final width = constraints.maxWidth;
           final height = constraints.maxHeight;
-          final reports = dummyDurianReports;
+          const markerWidth = 78.0;
+          const markerHeight = 84.0;
 
-          return Stack(
-            children: [
-              const Positioned.fill(
-                child: CustomPaint(painter: _SoftMapPainter()),
-              ),
-              Positioned(
-                top: height * 0.32,
-                left: width * 0.55,
-                child: _MapMarker(
-                  label: reports[0].markerLabel,
-                  color: _statusColor(reports[0].stockStatus),
-                  onTap: () {
-                    _showMarkerDetail(context, report: reports[0]);
-                  },
-                ),
-              ),
-              Positioned(
-                top: height * 0.43,
-                left: width * 0.25,
-                child: _MapMarker(
-                  label: reports[1].markerLabel,
-                  color: _statusColor(reports[1].stockStatus),
-                  onTap: () {
-                    _showMarkerDetail(context, report: reports[1]);
-                  },
-                ),
-              ),
-              Positioned(
-                top: height * 0.49,
-                right: width * 0.15,
-                child: _MapMarker(
-                  label: reports[2].markerLabel,
-                  color: _statusColor(reports[2].stockStatus),
-                  onTap: () {
-                    _showMarkerDetail(context, report: reports[2]);
-                  },
-                ),
-              ),
-              Positioned(
-                top: height * 0.60,
-                left: width * 0.49,
-                child: _MapMarker(
-                  label: reports[3].markerLabel,
-                  color: _statusColor(reports[3].stockStatus),
-                  onTap: () {
-                    _showMarkerDetail(context, report: reports[3]);
-                  },
-                ),
-              ),
-            ],
+          return ValueListenableBuilder<List<DurianReport>>(
+            valueListenable: durianReportStore,
+            builder: (context, reports, child) {
+              return Stack(
+                children: [
+                  const Positioned.fill(
+                    child: CustomPaint(painter: _SoftMapPainter()),
+                  ),
+                  ...List.generate(reports.length, (index) {
+                    final report = reports[index];
+                    final position =
+                        _markerPositions[index % _markerPositions.length];
+
+                    final left = (width * position.dx)
+                        .clamp(0.0, width - markerWidth)
+                        .toDouble();
+                    final top = (height * position.dy)
+                        .clamp(0.0, height - markerHeight)
+                        .toDouble();
+
+                    return Positioned(
+                      top: top,
+                      left: left,
+                      child: _MapMarker(
+                        label: report.markerLabel,
+                        color: _statusColor(report.stockStatus),
+                        onTap: () {
+                          _showMarkerDetail(context, report: report);
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              );
+            },
           );
         },
       ),
@@ -770,7 +802,15 @@ class _LocateButton extends StatelessWidget {
 }
 
 class _FloatingSummaryCard extends StatelessWidget {
-  const _FloatingSummaryCard();
+  const _FloatingSummaryCard({
+    required this.totalCount,
+    required this.priceSummary,
+    required this.latestUpdate,
+  });
+
+  final int totalCount;
+  final String priceSummary;
+  final String latestUpdate;
 
   @override
   Widget build(BuildContext context) {
@@ -803,46 +843,46 @@ class _FloatingSummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '12 lokasi fresh hari ini',
+                  '$totalCount lokasi fresh hari ini',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: _DRColors.durianGreen,
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                SizedBox(height: 5),
+                const SizedBox(height: 5),
                 Text(
-                  'Harga serendah RM15/kg',
+                  priceSummary,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: _DRColors.textDark,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(height: 7),
+                const SizedBox(height: 7),
                 Row(
                   children: [
-                    CircleAvatar(
+                    const CircleAvatar(
                       radius: 4,
                       backgroundColor: _DRColors.freshGreen,
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Update terbaru: 8 min lepas',
+                        'Update terbaru: $latestUpdate',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: _DRColors.textMuted,
                           fontSize: 10.5,
                           fontWeight: FontWeight.w500,
