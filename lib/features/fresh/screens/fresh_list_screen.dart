@@ -6,8 +6,8 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_filter_chip.dart';
 import '../../../shared/widgets/durian_bottom_nav.dart';
 import '../../../shared/widgets/durian_report_card.dart';
-import '../../auth/screens/login_register_screen.dart';
 import '../../home/screens/home_map_screen.dart';
+import '../../profile/screens/profile_screen.dart';
 
 class FreshListScreen extends StatelessWidget {
   const FreshListScreen({super.key});
@@ -83,11 +83,9 @@ class FreshListScreen extends StatelessWidget {
           }
 
           if (index == 2) {
-            Navigator.push(
+            Navigator.pushReplacement(
               context,
-              MaterialPageRoute(
-                builder: (context) => const LoginRegisterScreen(),
-              ),
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
             );
           }
         },

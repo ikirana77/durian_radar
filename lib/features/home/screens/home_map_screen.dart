@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../auth/screens/login_register_screen.dart';
+import '../../profile/screens/profile_screen.dart';
 import '../../fresh/screens/fresh_list_screen.dart';
 import '../../reports/screens/add_report_screen.dart';
 
@@ -56,9 +56,7 @@ class HomeMapScreen extends StatelessWidget {
         onProfileTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const LoginRegisterScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const ProfileScreen()),
           );
         },
       ),
@@ -148,7 +146,7 @@ class _HomeTopPanel extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const LoginRegisterScreen(),
+                      builder: (context) => const ProfileScreen(),
                     ),
                   );
                 },
