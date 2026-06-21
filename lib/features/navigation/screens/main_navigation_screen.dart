@@ -4,6 +4,7 @@ import '../../../shared/widgets/durian_bottom_nav.dart';
 import '../../fresh/screens/fresh_list_screen.dart';
 import '../../home/screens/home_map_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../data/navigation_store.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -21,10 +22,34 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     ProfileScreen(showBottomNavigationBar: false),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    navigationStore.addListener(_handleExternalNavigation);
+  }
+
+  @override
+  void dispose() {
+    navigationStore.removeListener(_handleExternalNavigation);
+    super.dispose();
+  }
+
+  void _handleExternalNavigation() {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _selectedIndex = navigationStore.value;
+    });
+  }
+
   void _onDestinationSelected(int index) {
     setState(() {
       _selectedIndex = index;
     });
+
+    navigationStore.goToIndex(index);
   }
 
   @override

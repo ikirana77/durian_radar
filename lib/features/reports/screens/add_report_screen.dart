@@ -5,6 +5,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../durian/data/durian_report_store.dart';
 import '../../durian/models/durian_report.dart';
+import '../../navigation/data/navigation_store.dart';
 
 class AddReportScreen extends StatefulWidget {
   const AddReportScreen({super.key});
@@ -23,6 +24,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
   final TextEditingController _noteController = TextEditingController();
 
   DurianStockStatus _selectedStatus = DurianStockStatus.available;
+  DurianReport? _lastSubmittedReport;
 
   @override
   void dispose() {
@@ -40,6 +42,8 @@ class _AddReportScreenState extends State<AddReportScreen> {
     if (!isValid) {
       return;
     }
+
+    FocusScope.of(context).unfocus();
 
     final stallName = _stallNameController.text.trim();
     final area = _areaController.text.trim();
@@ -60,22 +64,38 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
     durianReportStore.addReport(report);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.durianGreen,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        content: Text(
-          'Laporan diterima: $stallName, $area, $variety, $price',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
+    setState(() {
+      _lastSubmittedReport = report;
+    });
 
-    Navigator.pop(context);
+    _showSuccessSheet(report);
+  }
+
+  void _showSuccessSheet(DurianReport report) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (context) {
+        return _ReportSuccessSheet(
+          report: report,
+          statusColor: _statusColor(report.stockStatus),
+          onViewFreshPressed: () {
+            navigationStore.goToFresh();
+
+            Navigator.pop(context);
+            Navigator.pop(context);
+          },
+          onBackToMapPressed: () {
+            navigationStore.goToMap();
+
+            Navigator.pop(context);
+            Navigator.pop(context);
+          },
+        );
+      },
+    );
   }
 
   String _markerLabelFromVariety(String variety) {
@@ -135,6 +155,8 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lastSubmittedReport = _lastSubmittedReport;
+
     return Scaffold(
       backgroundColor: AppColors.creamBackground,
       body: SafeArea(
@@ -155,6 +177,15 @@ class _AddReportScreenState extends State<AddReportScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const _IntroCard(),
+                      if (lastSubmittedReport != null) ...[
+                        const SizedBox(height: AppSpacing.m),
+                        _LastSubmittedMiniCard(
+                          report: lastSubmittedReport,
+                          statusColor: _statusColor(
+                            lastSubmittedReport.stockStatus,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: AppSpacing.l),
                       const _SectionTitle(
                         title: 'Maklumat Gerai',
@@ -328,7 +359,7 @@ class _IntroCard extends StatelessWidget {
           const SizedBox(width: 14),
           const Expanded(
             child: Text(
-              'Laporan akan masuk ke senarai Fresh Hari Ini secara sementara. Nanti kita sambungkan kepada database Supabase.',
+              'Laporan akan masuk ke senarai Fresh Hari Ini dan muncul sebagai marker di Map secara sementara.',
               style: TextStyle(
                 color: Color(0xFF6D756B),
                 fontSize: 13,
@@ -338,6 +369,209 @@ class _IntroCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LastSubmittedMiniCard extends StatelessWidget {
+  const _LastSubmittedMiniCard({
+    required this.report,
+    required this.statusColor,
+  });
+
+  final DurianReport report;
+  final Color statusColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.11),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: statusColor,
+            child: const Icon(
+              Icons.check_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Laporan terakhir: ${report.stallName}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportSuccessSheet extends StatelessWidget {
+  const _ReportSuccessSheet({
+    required this.report,
+    required this.statusColor,
+    required this.onViewFreshPressed,
+    required this.onBackToMapPressed,
+  });
+
+  final DurianReport report;
+  final Color statusColor;
+  final VoidCallback onViewFreshPressed;
+  final VoidCallback onBackToMapPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(22, 14, 22, 22),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 5,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEDFBF),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                color: Color(0xFFEAF6D9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.durianGreen,
+                size: 46,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Laporan Berjaya Dihantar!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.durianGreen,
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              report.stallName,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF173D25),
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${report.area} • ${report.variety} • ${report.price}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF6D756B),
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: statusColor.withValues(alpha: 0.32)),
+              ),
+              child: Text(
+                report.statusText,
+                style: TextStyle(
+                  color: statusColor,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: onViewFreshPressed,
+                icon: const Icon(Icons.eco_rounded),
+                label: const Text('Lihat di Fresh List'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.durianGreen,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: onBackToMapPressed,
+                icon: const Icon(Icons.map_rounded),
+                label: const Text('Kembali ke Map'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.durianGreen,
+                  side: const BorderSide(color: Color(0xFFEEDFBF)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
