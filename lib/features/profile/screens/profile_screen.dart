@@ -49,34 +49,36 @@ class ProfileScreen extends StatelessWidget {
             const Text('Saya', style: AppTextStyles.pageTitle),
             const SizedBox(height: 6),
             const Text(
-              'Akaun, laporan dan tetapan pengguna',
+              'Akaun, mod tetamu dan tetapan aplikasi',
               style: AppTextStyles.helper,
             ),
             const SizedBox(height: AppSpacing.l),
-            _LoginPromptCard(onLoginPressed: () => _openLoginRegister(context)),
+            _GuestModeCard(onLoginPressed: () => _openLoginRegister(context)),
+            const SizedBox(height: AppSpacing.l),
+            const _CapabilitySection(),
             const SizedBox(height: AppSpacing.l),
             const _ProfileMenuCard(
               icon: Icons.receipt_long_rounded,
               title: 'Laporan Saya',
-              subtitle: 'Lihat durian yang pernah anda laporkan',
+              subtitle: 'Akan aktif selepas fungsi login sebenar disambungkan.',
             ),
             const SizedBox(height: AppSpacing.s),
             const _ProfileMenuCard(
               icon: Icons.bookmark_border_rounded,
               title: 'Lokasi Disimpan',
-              subtitle: 'Simpan lokasi durian kegemaran',
+              subtitle: 'Simpan lokasi durian kegemaran apabila akaun aktif.',
             ),
             const SizedBox(height: AppSpacing.s),
             const _ProfileMenuCard(
               icon: Icons.notifications_none_rounded,
               title: 'Notifikasi',
-              subtitle: 'Amaran lokasi fresh dan harga murah',
+              subtitle: 'Amaran lokasi fresh dan harga murah akan datang.',
             ),
             const SizedBox(height: AppSpacing.s),
             const _ProfileMenuCard(
               icon: Icons.settings_outlined,
               title: 'Tetapan',
-              subtitle: 'Bahasa, privasi dan pilihan aplikasi',
+              subtitle: 'Bahasa, privasi dan pilihan aplikasi.',
             ),
             const SizedBox(height: AppSpacing.l),
             _DeveloperToolsCard(onResetPressed: () => _resetDummyData(context)),
@@ -111,8 +113,8 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-class _LoginPromptCard extends StatelessWidget {
-  const _LoginPromptCard({required this.onLoginPressed});
+class _GuestModeCard extends StatelessWidget {
+  const _GuestModeCard({required this.onLoginPressed});
 
   final VoidCallback onLoginPressed;
 
@@ -123,7 +125,8 @@ class _LoginPromptCard extends StatelessWidget {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFEEDFBF)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -135,8 +138,8 @@ class _LoginPromptCard extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 76,
-            height: 76,
+            width: 78,
+            height: 78,
             decoration: const BoxDecoration(
               color: Color(0xFFEAF6D9),
               shape: BoxShape.circle,
@@ -144,26 +147,28 @@ class _LoginPromptCard extends StatelessWidget {
             child: const Icon(
               Icons.person_outline_rounded,
               color: AppColors.durianGreen,
-              size: 42,
+              size: 44,
             ),
           ),
           const SizedBox(height: 14),
           const Text(
-            'Belum Log Masuk',
+            'Anda sedang guna Guest Mode',
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.durianGreen,
               fontSize: 20,
               fontWeight: FontWeight.w900,
+              letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 7),
           const Text(
-            'Log masuk untuk simpan laporan durian, lokasi kegemaran dan sejarah carian.',
+            'Anda masih boleh lihat map, cari durian dan hantar laporan. Login sebenar akan disambungkan selepas backend siap.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Color(0xFF6D756B),
               fontSize: 13,
-              height: 1.4,
+              height: 1.42,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -184,8 +189,126 @@ class _LoginPromptCard extends StatelessWidget {
                 ),
                 textStyle: const TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
                 ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CapabilitySection extends StatelessWidget {
+  const _CapabilitySection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: const [
+        _CapabilityCard(
+          icon: Icons.check_circle_rounded,
+          iconColor: AppColors.freshGreen,
+          title: 'Boleh guna tanpa login',
+          items: [
+            'Lihat lokasi durian di Map',
+            'Cari dan filter Fresh List',
+            'Hantar laporan dummy sementara',
+            'Lihat marker laporan di Map',
+          ],
+        ),
+        SizedBox(height: AppSpacing.s),
+        _CapabilityCard(
+          icon: Icons.lock_outline_rounded,
+          iconColor: AppColors.warningYellow,
+          title: 'Perlu login nanti',
+          items: [
+            'Simpan lokasi kegemaran',
+            'Rekod laporan peribadi',
+            'Notifikasi harga dan stok',
+            'Moderation dan reputasi pengguna',
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CapabilityCard extends StatelessWidget {
+  const _CapabilityCard({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.items,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFEEDFBF)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: iconColor.withValues(alpha: 0.14),
+                child: Icon(icon, color: iconColor, size: 23),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.durianGreen,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 7),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '•',
+                    style: TextStyle(
+                      color: AppColors.durianGreen,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        color: Color(0xFF6D756B),
+                        fontSize: 12.5,
+                        height: 1.25,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
