@@ -25,4 +25,16 @@ class DurianReportRepository {
 
     return rows.map(DurianReport.fromMap).toList();
   }
+
+  Future<bool> insertReport(DurianReport report) async {
+    final client = SupabaseService.client;
+
+    if (client == null) {
+      return false;
+    }
+
+    await client.from(_tableName).insert(report.toMap());
+
+    return true;
+  }
 }

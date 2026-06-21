@@ -4,6 +4,32 @@ import '../models/durian_report.dart';
 import 'dummy_durian_reports.dart';
 import 'durian_report_repository.dart';
 
+class DurianReportSubmitResult {
+  const DurianReportSubmitResult({
+    required this.savedLocally,
+    required this.savedToSupabase,
+    this.errorMessage,
+  });
+
+  final bool savedLocally;
+  final bool savedToSupabase;
+  final String? errorMessage;
+
+  bool get usedLocalFallback => savedLocally && !savedToSupabase;
+
+  String get message {
+    if (savedToSupabase) {
+      return 'Laporan telah dihantar ke Supabase sebagai pending approval.';
+    }
+
+    if (errorMessage != null && errorMessage!.isNotEmpty) {
+      return 'Laporan disimpan sementara dalam app. Supabase gagal sync.';
+    }
+
+    return 'Laporan disimpan sementara dalam app. Supabase belum disambungkan.';
+  }
+}
+
 class DurianReportStore extends ValueNotifier<List<DurianReport>> {
   DurianReportStore({DurianReportRepository? repository})
     : _repository = repository ?? const DurianReportRepository(),
@@ -27,6 +53,47 @@ class DurianReportStore extends ValueNotifier<List<DurianReport>> {
 
   void addReport(DurianReport report) {
     value = [report, ...value];
+  }
+
+  Future<DurianReportSubmitResult> submitReport(DurianReport report) async {
+    addReport(report);
+
+    try {
+      final savedToSupabase = await _repository.insertReport(report);
+
+      if (savedToSupabase) {
+        debugPrint(
+          'Submitted durian report ${report.id} to Supabase as unapproved.',
+        );
+
+        return const DurianReportSubmitResult(
+          savedLocally: true,
+          savedToSupabase: true,
+        );
+      }
+
+      debugPrint(
+        'Supabase client is not ready. Report kept in local memory only.',
+      );
+
+      return const DurianReportSubmitResult(
+        savedLocally: true,
+        savedToSupabase: false,
+      );
+    } catch (error, stackTrace) {
+      _lastRemoteError = error.toString();
+
+      debugPrint('Failed to submit durian report to Supabase.');
+      debugPrint(error.toString());
+      debugPrint(stackTrace.toString());
+      debugPrint('Report is still kept in local memory.');
+
+      return DurianReportSubmitResult(
+        savedLocally: true,
+        savedToSupabase: false,
+        errorMessage: error.toString(),
+      );
+    }
   }
 
   void replaceAllReports(List<DurianReport> reports) {

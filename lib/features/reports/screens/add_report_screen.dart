@@ -25,6 +25,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
   DurianStockStatus _selectedStatus = DurianStockStatus.available;
   DurianReport? _lastSubmittedReport;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -36,7 +37,11 @@ class _AddReportScreenState extends State<AddReportScreen> {
     super.dispose();
   }
 
-  void _submitReport() {
+  Future<void> _submitReport() async {
+    if (_isSubmitting) {
+      return;
+    }
+
     final isValid = _formKey.currentState?.validate() ?? false;
 
     if (!isValid) {
@@ -44,6 +49,10 @@ class _AddReportScreenState extends State<AddReportScreen> {
     }
 
     FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isSubmitting = true;
+    });
 
     final stallName = _stallNameController.text.trim();
     final area = _areaController.text.trim();
@@ -71,13 +80,18 @@ class _AddReportScreenState extends State<AddReportScreen> {
       isApproved: false,
     );
 
-    durianReportStore.addReport(report);
+    final submitResult = await durianReportStore.submitReport(report);
+
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _lastSubmittedReport = report;
+      _isSubmitting = false;
     });
 
-    _showSuccessSheet(report);
+    _showSuccessSheet(report: report, submitResult: submitResult);
   }
 
   double _temporaryLatitude() {
@@ -90,7 +104,10 @@ class _AddReportScreenState extends State<AddReportScreen> {
     return 101.2500 + ((index % 5) * 0.007);
   }
 
-  void _showSuccessSheet(DurianReport report) {
+  void _showSuccessSheet({
+    required DurianReport report,
+    required DurianReportSubmitResult submitResult,
+  }) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -99,6 +116,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
       builder: (context) {
         return _ReportSuccessSheet(
           report: report,
+          submitResult: submitResult,
           statusColor: _statusColor(report.stockStatus),
           onViewFreshPressed: () {
             navigationStore.goToFresh();
@@ -265,7 +283,10 @@ class _AddReportScreenState extends State<AddReportScreen> {
                         isRequired: false,
                       ),
                       const SizedBox(height: AppSpacing.xl),
-                      _SubmitButton(onPressed: _submitReport),
+                      _SubmitButton(
+                        isLoading: _isSubmitting,
+                        onPressed: _submitReport,
+                      ),
                     ],
                   ),
                 ),
@@ -359,7 +380,7 @@ class _IntroCard extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.radar_rounded,
+              Icons.cloud_upload_outlined,
               color: AppColors.durianGreen,
               size: 30,
             ),
@@ -367,7 +388,7 @@ class _IntroCard extends StatelessWidget {
           const SizedBox(width: 14),
           const Expanded(
             child: Text(
-              'Laporan akan masuk ke senarai Fresh Hari Ini dan muncul sebagai marker di Map secara sementara. Data model kini disediakan untuk sambungan Supabase.',
+              'Laporan akan dihantar ke Supabase sebagai pending approval dan dipaparkan sementara dalam app.',
               style: TextStyle(
                 color: Color(0xFF6D756B),
                 fontSize: 13,
@@ -434,23 +455,35 @@ class _LastSubmittedMiniCard extends StatelessWidget {
 class _ReportSuccessSheet extends StatelessWidget {
   const _ReportSuccessSheet({
     required this.report,
+    required this.submitResult,
     required this.statusColor,
     required this.onViewFreshPressed,
     required this.onBackToMapPressed,
   });
 
   final DurianReport report;
+  final DurianReportSubmitResult submitResult;
   final Color statusColor;
   final VoidCallback onViewFreshPressed;
   final VoidCallback onBackToMapPressed;
 
   @override
   Widget build(BuildContext context) {
+    final syncColor = submitResult.savedToSupabase
+        ? AppColors.freshGreen
+        : AppColors.warningYellow;
+
+    final syncIcon = submitResult.savedToSupabase
+        ? Icons.cloud_done_rounded
+        : Icons.cloud_off_rounded;
+
     return SafeArea(
       top: false,
       child: Container(
         margin: const EdgeInsets.all(14),
-        padding: const EdgeInsets.fromLTRB(22, 14, 22, 22),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(30),
@@ -462,138 +495,174 @@ class _ReportSuccessSheet extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 5,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEEDFBF),
-                borderRadius: BorderRadius.circular(99),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEDFBF),
+                  borderRadius: BorderRadius.circular(99),
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(
-                color: Color(0xFFEAF6D9),
-                shape: BoxShape.circle,
+              const SizedBox(height: 18),
+              Container(
+                width: 66,
+                height: 66,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEAF6D9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.durianGreen,
+                  size: 42,
+                ),
               ),
-              child: const Icon(
-                Icons.check_circle_rounded,
-                color: AppColors.durianGreen,
-                size: 46,
+              const SizedBox(height: 14),
+              const Text(
+                'Laporan Berjaya Dihantar!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.durianGreen,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Laporan Berjaya Dihantar!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.durianGreen,
-                fontSize: 21,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              report.stallName,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF173D25),
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '${report.area} • ${report.variety} • ${report.price}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF6D756B),
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (report.note != null && report.note!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                report.note!,
+                report.stallName,
                 textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF173D25),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${report.area} • ${report.variety} • ${report.price}',
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFF6D756B),
-                  fontSize: 12,
-                  height: 1.3,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (report.note != null && report.note!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  report.note!,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF6D756B),
+                    fontSize: 12,
+                    height: 1.3,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: statusColor.withValues(alpha: 0.32),
+                  ),
+                ),
+                child: Text(
+                  report.statusText,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: syncColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: syncColor.withValues(alpha: 0.32)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(syncIcon, color: syncColor, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        submitResult.message,
+                        style: TextStyle(
+                          color: syncColor,
+                          fontSize: 12.3,
+                          height: 1.35,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: onViewFreshPressed,
+                  icon: const Icon(Icons.eco_rounded),
+                  label: const Text('Lihat di Fresh List'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.durianGreen,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: onBackToMapPressed,
+                  icon: const Icon(Icons.map_rounded),
+                  label: const Text('Kembali ke Map'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.durianGreen,
+                    side: const BorderSide(color: Color(0xFFEEDFBF)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
               ),
             ],
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: statusColor.withValues(alpha: 0.32)),
-              ),
-              child: Text(
-                report.statusText,
-                style: TextStyle(
-                  color: statusColor,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: onViewFreshPressed,
-                icon: const Icon(Icons.eco_rounded),
-                label: const Text('Lihat di Fresh List'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.durianGreen,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: onBackToMapPressed,
-                icon: const Icon(Icons.map_rounded),
-                label: const Text('Kembali ke Map'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.durianGreen,
-                  side: const BorderSide(color: Color(0xFFEEDFBF)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -812,8 +881,9 @@ class _StockStatusSelector extends StatelessWidget {
 }
 
 class _SubmitButton extends StatelessWidget {
-  const _SubmitButton({required this.onPressed});
+  const _SubmitButton({required this.isLoading, required this.onPressed});
 
+  final bool isLoading;
   final VoidCallback onPressed;
 
   @override
@@ -822,12 +892,25 @@ class _SubmitButton extends StatelessWidget {
       width: double.infinity,
       height: 54,
       child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: const Icon(Icons.send_rounded),
-        label: const Text('Hantar Laporan'),
+        onPressed: isLoading ? null : onPressed,
+        icon: isLoading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Icon(Icons.send_rounded),
+        label: Text(isLoading ? 'Menghantar...' : 'Hantar Laporan'),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.durianGreen,
+          disabledBackgroundColor: AppColors.durianGreen.withValues(
+            alpha: 0.65,
+          ),
           foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
