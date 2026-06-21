@@ -311,6 +311,34 @@ class _QuickChip extends StatelessWidget {
 class _IllustratedMapArea extends StatelessWidget {
   const _IllustratedMapArea();
 
+  void _showMarkerDetail(
+    BuildContext context, {
+    required String stallName,
+    required String area,
+    required String variety,
+    required String price,
+    required String status,
+    required String updatedTime,
+    required Color statusColor,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return _DurianMarkerDetailSheet(
+          stallName: stallName,
+          area: area,
+          variety: variety,
+          price: price,
+          status: status,
+          updatedTime: updatedTime,
+          statusColor: statusColor,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -328,33 +356,81 @@ class _IllustratedMapArea extends StatelessWidget {
               Positioned(
                 top: height * 0.32,
                 left: width * 0.55,
-                child: const _MapMarker(
+                child: _MapMarker(
                   label: 'MK',
                   color: _DRColors.freshGreen,
+                  onTap: () {
+                    _showMarkerDetail(
+                      context,
+                      stallName: 'Gerai Durian Bukit Rotan',
+                      area: 'Bukit Rotan, Kuala Selangor',
+                      variety: 'Musang King',
+                      price: 'RM38/kg',
+                      status: 'Masih Ada',
+                      updatedTime: '12 min lepas',
+                      statusColor: _DRColors.freshGreen,
+                    );
+                  },
                 ),
               ),
               Positioned(
                 top: height * 0.43,
                 left: width * 0.25,
-                child: const _MapMarker(
+                child: _MapMarker(
                   label: 'D24',
                   color: _DRColors.warningYellow,
+                  onTap: () {
+                    _showMarkerDetail(
+                      context,
+                      stallName: 'Durian Tepi Jalan Assam Jawa',
+                      area: 'Assam Jawa, Selangor',
+                      variety: 'D24',
+                      price: 'RM28/kg',
+                      status: 'Stok Sikit',
+                      updatedTime: '25 min lepas',
+                      statusColor: _DRColors.warningYellow,
+                    );
+                  },
                 ),
               ),
               Positioned(
                 top: height * 0.49,
                 right: width * 0.15,
-                child: const _MapMarker(
+                child: _MapMarker(
                   label: 'KG',
                   color: _DRColors.freshGreen,
+                  onTap: () {
+                    _showMarkerDetail(
+                      context,
+                      stallName: 'Durian Kampung Fresh',
+                      area: 'Kuala Selangor',
+                      variety: 'Kampung',
+                      price: 'RM15/kg',
+                      status: 'Masih Ada',
+                      updatedTime: '2 jam lepas',
+                      statusColor: _DRColors.freshGreen,
+                    );
+                  },
                 ),
               ),
               Positioned(
                 top: height * 0.60,
                 left: width * 0.49,
-                child: const _MapMarker(
+                child: _MapMarker(
                   label: 'Habis',
                   color: _DRColors.soldOutRed,
+                  onTap: () {
+                    _showMarkerDetail(
+                      context,
+                      stallName: 'Warung Durian Bestari',
+                      area: 'Puncak Alam',
+                      variety: 'XO',
+                      price: 'RM22/kg',
+                      status: 'Dah Habis',
+                      updatedTime: '1 jam lepas',
+                      statusColor: _DRColors.soldOutRed,
+                    );
+                  },
                 ),
               ),
             ],
@@ -366,51 +442,325 @@ class _IllustratedMapArea extends StatelessWidget {
 }
 
 class _MapMarker extends StatelessWidget {
-  const _MapMarker({required this.label, required this.color});
+  const _MapMarker({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 
   final String label;
   final Color color;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final bool longLabel = label.length > 3;
 
-    return SizedBox(
-      width: 78,
-      height: 84,
-      child: Stack(
-        alignment: Alignment.topCenter,
-        children: [
-          Positioned(
-            top: 8,
-            child: Icon(
-              Icons.location_on_rounded,
-              size: 70,
-              color: Colors.black.withValues(alpha: 0.18),
-            ),
-          ),
-          const Positioned(
-            top: 0,
-            child: Icon(
-              Icons.location_on_rounded,
-              size: 74,
-              color: Colors.white,
-            ),
-          ),
-          Positioned(
-            top: 4,
-            child: Icon(Icons.location_on_rounded, size: 66, color: color),
-          ),
-          Positioned(
-            top: 24,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: longLabel ? 13 : 16,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.3,
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 78,
+        height: 84,
+        child: Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            Positioned(
+              top: 8,
+              child: Icon(
+                Icons.location_on_rounded,
+                size: 70,
+                color: Colors.black.withValues(alpha: 0.18),
               ),
+            ),
+            const Positioned(
+              top: 0,
+              child: Icon(
+                Icons.location_on_rounded,
+                size: 74,
+                color: Colors.white,
+              ),
+            ),
+            Positioned(
+              top: 4,
+              child: Icon(Icons.location_on_rounded, size: 66, color: color),
+            ),
+            Positioned(
+              top: 24,
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: longLabel ? 13 : 16,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DurianMarkerDetailSheet extends StatelessWidget {
+  const _DurianMarkerDetailSheet({
+    required this.stallName,
+    required this.area,
+    required this.variety,
+    required this.price,
+    required this.status,
+    required this.updatedTime,
+    required this.statusColor,
+  });
+
+  final String stallName;
+  final String area;
+  final String variety;
+  final String price;
+  final String status;
+  final String updatedTime;
+  final Color statusColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        decoration: BoxDecoration(
+          color: _DRColors.cardWhite,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 42,
+              height: 5,
+              decoration: BoxDecoration(
+                color: _DRColors.borderSoft,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: const BoxDecoration(
+                    color: _DRColors.paleGreen,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Image.asset(
+                      _DRAssets.durianFull,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        stallName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _DRColors.textDark,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_rounded,
+                            color: _DRColors.durianGreen,
+                            size: 17,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              area,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: _DRColors.textMuted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: _DetailInfoPill(
+                    label: 'Jenis',
+                    value: variety,
+                    icon: Icons.eco_rounded,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _DetailInfoPill(
+                    label: 'Harga',
+                    value: price,
+                    icon: Icons.sell_rounded,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(radius: 6, backgroundColor: statusColor),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    updatedTime,
+                    style: const TextStyle(
+                      color: _DRColors.textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.bookmark_border_rounded),
+                    label: const Text('Simpan'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _DRColors.durianGreen,
+                      side: const BorderSide(color: _DRColors.borderSoft),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.near_me_rounded),
+                    label: const Text('Arahkan Saya'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _DRColors.durianGreen,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailInfoPill extends StatelessWidget {
+  const _DetailInfoPill({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _DRColors.creamSoft,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _DRColors.borderSoft),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: _DRColors.warningYellow, size: 22),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: _DRColors.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _DRColors.textDark,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
