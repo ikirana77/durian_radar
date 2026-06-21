@@ -8,6 +8,8 @@ import '../../../shared/widgets/durian_bottom_nav.dart';
 import '../../../shared/widgets/durian_report_card.dart';
 import '../../home/screens/home_map_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../durian/data/dummy_durian_reports.dart';
+import '../../durian/models/durian_report.dart';
 
 class FreshListScreen extends StatelessWidget {
   const FreshListScreen({super.key, this.showBottomNavigationBar = true});
@@ -29,45 +31,24 @@ class FreshListScreen extends StatelessWidget {
               const _FreshFilterRow(),
               const SizedBox(height: AppSpacing.l),
               Expanded(
-                child: ListView(
-                  children: const [
-                    DurianReportCard(
-                      stallName: 'Gerai Durian Bukit Rotan',
-                      area: 'Bukit Rotan, Kuala Selangor',
-                      variety: 'Musang King',
-                      price: 'RM38/kg',
-                      status: 'Masih Ada',
-                      updatedTime: '12 min',
-                      statusColor: AppColors.freshGreen,
-                    ),
-                    DurianReportCard(
-                      stallName: 'Durian Tepi Jalan Assam Jawa',
-                      area: 'Assam Jawa, Selangor',
-                      variety: 'D24',
-                      price: 'RM28/kg',
-                      status: 'Stok Sikit',
-                      updatedTime: '25 min',
-                      statusColor: AppColors.warningYellow,
-                    ),
-                    DurianReportCard(
-                      stallName: 'Warung Durian Bestari',
-                      area: 'Puncak Alam',
-                      variety: 'XO',
-                      price: 'RM22/kg',
-                      status: 'Dah Habis',
-                      updatedTime: '1 jam',
-                      statusColor: AppColors.soldOutRed,
-                    ),
-                    DurianReportCard(
-                      stallName: 'Durian Kampung Fresh',
-                      area: 'Kuala Selangor',
-                      variety: 'Kampung',
-                      price: 'RM15/kg',
-                      status: 'Masih Ada',
-                      updatedTime: '2 jam',
-                      statusColor: AppColors.freshGreen,
-                    ),
-                  ],
+                child: ListView.separated(
+                  itemCount: dummyDurianReports.length,
+                  separatorBuilder: (context, index) {
+                    return const SizedBox(height: AppSpacing.s);
+                  },
+                  itemBuilder: (context, index) {
+                    final report = dummyDurianReports[index];
+
+                    return DurianReportCard(
+                      stallName: report.stallName,
+                      area: report.area,
+                      variety: report.variety,
+                      price: report.price,
+                      status: report.statusText,
+                      updatedTime: report.updatedTime,
+                      statusColor: _statusColor(report.stockStatus),
+                    );
+                  },
                 ),
               ),
             ],
@@ -99,6 +80,17 @@ class FreshListScreen extends StatelessWidget {
             )
           : null,
     );
+  }
+}
+
+Color _statusColor(DurianStockStatus status) {
+  switch (status) {
+    case DurianStockStatus.available:
+      return AppColors.freshGreen;
+    case DurianStockStatus.lowStock:
+      return AppColors.warningYellow;
+    case DurianStockStatus.soldOut:
+      return AppColors.soldOutRed;
   }
 }
 

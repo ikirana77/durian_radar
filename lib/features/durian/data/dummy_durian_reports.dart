@@ -1,0 +1,48 @@
+import '../models/durian_report.dart';
+
+const List<DurianReport> dummyDurianReports = [
+  DurianReport(
+    id: 'DR001',
+    markerLabel: 'MK',
+    stallName: 'Gerai Durian Bukit Rotan',
+    area: 'Bukit Rotan, Kuala Selangor',
+    variety: 'Musang King',
+    price: 'RM38/kg',
+    stockStatus: DurianStockStatus.available,
+    statusText: 'Masih Ada',
+    updatedTime: '12 min lepas',
+  ),
+  DurianReport(
+    id: 'DR002',
+    markerLabel: 'D24',
+    stallName: 'Durian Tepi Jalan Assam Jawa',
+    area: 'Assam Jawa, Selangor',
+    variety: 'D24',
+    price: 'RM28/kg',
+    stockStatus: DurianStockStatus.lowStock,
+    statusText: 'Stok Sikit',
+    updatedTime: '25 min lepas',
+  ),
+  DurianReport(
+    id: 'DR003',
+    markerLabel: 'KG',
+    stallName: 'Durian Kampung Fresh',
+    area: 'Kuala Selangor',
+    variety: 'Kampung',
+    price: 'RM15/kg',
+    stockStatus: DurianStockStatus.available,
+    statusText: 'Masih Ada',
+    updatedTime: '2 jam lepas',
+  ),
+  DurianReport(
+    id: 'DR004',
+    markerLabel: 'Habis',
+    stallName: 'Warung Durian Bestari',
+    area: 'Puncak Alam',
+    variety: 'XO',
+    price: 'RM22/kg',
+    stockStatus: DurianStockStatus.soldOut,
+    statusText: 'Dah Habis',
+    updatedTime: '1 jam lepas',
+  ),
+];

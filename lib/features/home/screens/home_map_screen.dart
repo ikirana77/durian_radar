@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../fresh/screens/fresh_list_screen.dart';
 import '../../reports/screens/add_report_screen.dart';
+import '../../durian/data/dummy_durian_reports.dart';
+import '../../durian/models/durian_report.dart';
 
 class HomeMapScreen extends StatelessWidget {
   const HomeMapScreen({super.key, this.showBottomNavigationBar = true});
@@ -311,32 +313,36 @@ class _QuickChip extends StatelessWidget {
 class _IllustratedMapArea extends StatelessWidget {
   const _IllustratedMapArea();
 
-  void _showMarkerDetail(
-    BuildContext context, {
-    required String stallName,
-    required String area,
-    required String variety,
-    required String price,
-    required String status,
-    required String updatedTime,
-    required Color statusColor,
-  }) {
+  void _showMarkerDetail(BuildContext context, {required DurianReport report}) {
+    final statusColor = _statusColor(report.stockStatus);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
         return _DurianMarkerDetailSheet(
-          stallName: stallName,
-          area: area,
-          variety: variety,
-          price: price,
-          status: status,
-          updatedTime: updatedTime,
+          stallName: report.stallName,
+          area: report.area,
+          variety: report.variety,
+          price: report.price,
+          status: report.statusText,
+          updatedTime: report.updatedTime,
           statusColor: statusColor,
         );
       },
     );
+  }
+
+  Color _statusColor(DurianStockStatus status) {
+    switch (status) {
+      case DurianStockStatus.available:
+        return _DRColors.freshGreen;
+      case DurianStockStatus.lowStock:
+        return _DRColors.warningYellow;
+      case DurianStockStatus.soldOut:
+        return _DRColors.soldOutRed;
+    }
   }
 
   @override
@@ -347,6 +353,7 @@ class _IllustratedMapArea extends StatelessWidget {
         builder: (context, constraints) {
           final width = constraints.maxWidth;
           final height = constraints.maxHeight;
+          final reports = dummyDurianReports;
 
           return Stack(
             children: [
@@ -357,19 +364,10 @@ class _IllustratedMapArea extends StatelessWidget {
                 top: height * 0.32,
                 left: width * 0.55,
                 child: _MapMarker(
-                  label: 'MK',
-                  color: _DRColors.freshGreen,
+                  label: reports[0].markerLabel,
+                  color: _statusColor(reports[0].stockStatus),
                   onTap: () {
-                    _showMarkerDetail(
-                      context,
-                      stallName: 'Gerai Durian Bukit Rotan',
-                      area: 'Bukit Rotan, Kuala Selangor',
-                      variety: 'Musang King',
-                      price: 'RM38/kg',
-                      status: 'Masih Ada',
-                      updatedTime: '12 min lepas',
-                      statusColor: _DRColors.freshGreen,
-                    );
+                    _showMarkerDetail(context, report: reports[0]);
                   },
                 ),
               ),
@@ -377,19 +375,10 @@ class _IllustratedMapArea extends StatelessWidget {
                 top: height * 0.43,
                 left: width * 0.25,
                 child: _MapMarker(
-                  label: 'D24',
-                  color: _DRColors.warningYellow,
+                  label: reports[1].markerLabel,
+                  color: _statusColor(reports[1].stockStatus),
                   onTap: () {
-                    _showMarkerDetail(
-                      context,
-                      stallName: 'Durian Tepi Jalan Assam Jawa',
-                      area: 'Assam Jawa, Selangor',
-                      variety: 'D24',
-                      price: 'RM28/kg',
-                      status: 'Stok Sikit',
-                      updatedTime: '25 min lepas',
-                      statusColor: _DRColors.warningYellow,
-                    );
+                    _showMarkerDetail(context, report: reports[1]);
                   },
                 ),
               ),
@@ -397,19 +386,10 @@ class _IllustratedMapArea extends StatelessWidget {
                 top: height * 0.49,
                 right: width * 0.15,
                 child: _MapMarker(
-                  label: 'KG',
-                  color: _DRColors.freshGreen,
+                  label: reports[2].markerLabel,
+                  color: _statusColor(reports[2].stockStatus),
                   onTap: () {
-                    _showMarkerDetail(
-                      context,
-                      stallName: 'Durian Kampung Fresh',
-                      area: 'Kuala Selangor',
-                      variety: 'Kampung',
-                      price: 'RM15/kg',
-                      status: 'Masih Ada',
-                      updatedTime: '2 jam lepas',
-                      statusColor: _DRColors.freshGreen,
-                    );
+                    _showMarkerDetail(context, report: reports[2]);
                   },
                 ),
               ),
@@ -417,19 +397,10 @@ class _IllustratedMapArea extends StatelessWidget {
                 top: height * 0.60,
                 left: width * 0.49,
                 child: _MapMarker(
-                  label: 'Habis',
-                  color: _DRColors.soldOutRed,
+                  label: reports[3].markerLabel,
+                  color: _statusColor(reports[3].stockStatus),
                   onTap: () {
-                    _showMarkerDetail(
-                      context,
-                      stallName: 'Warung Durian Bestari',
-                      area: 'Puncak Alam',
-                      variety: 'XO',
-                      price: 'RM22/kg',
-                      status: 'Dah Habis',
-                      updatedTime: '1 jam lepas',
-                      statusColor: _DRColors.soldOutRed,
-                    );
+                    _showMarkerDetail(context, report: reports[3]);
                   },
                 ),
               ),
