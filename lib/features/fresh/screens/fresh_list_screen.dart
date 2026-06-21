@@ -20,22 +20,78 @@ class FreshListScreen extends StatefulWidget {
 }
 
 class _FreshListScreenState extends State<FreshListScreen> {
+  final TextEditingController _searchController = TextEditingController();
+
   DurianStockStatus? _selectedStatus;
+  String _searchQuery = '';
+  bool _isSearchVisible = false;
 
   List<DurianReport> get _filteredReports {
-    if (_selectedStatus == null) {
-      return dummyDurianReports;
-    }
+    final query = _searchQuery.trim().toLowerCase();
 
-    return dummyDurianReports
-        .where((report) => report.stockStatus == _selectedStatus)
-        .toList();
+    return dummyDurianReports.where((report) {
+      final matchesStatus =
+          _selectedStatus == null || report.stockStatus == _selectedStatus;
+
+      final searchableText = [
+        report.id,
+        report.markerLabel,
+        report.stallName,
+        report.area,
+        report.variety,
+        report.price,
+        report.statusText,
+        report.updatedTime,
+      ].join(' ').toLowerCase();
+
+      final matchesSearch = query.isEmpty || searchableText.contains(query);
+
+      return matchesStatus && matchesSearch;
+    }).toList();
   }
 
   void _selectStatus(DurianStockStatus? status) {
     setState(() {
       _selectedStatus = status;
     });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchVisible = !_isSearchVisible;
+
+      if (!_isSearchVisible) {
+        _searchController.clear();
+        _searchQuery = '';
+      }
+    });
+  }
+
+  void _updateSearchQuery(String value) {
+    setState(() {
+      _searchQuery = value;
+    });
+  }
+
+  void _clearSearch() {
+    setState(() {
+      _searchController.clear();
+      _searchQuery = '';
+    });
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _selectedStatus = null;
+      _searchController.clear();
+      _searchQuery = '';
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -50,7 +106,19 @@ class _FreshListScreenState extends State<FreshListScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _FreshHeader(),
+              _FreshHeader(
+                isSearchVisible: _isSearchVisible,
+                onSearchPressed: _toggleSearch,
+                onResetPressed: _resetFilters,
+              ),
+              if (_isSearchVisible) ...[
+                const SizedBox(height: AppSpacing.m),
+                _FreshSearchBar(
+                  controller: _searchController,
+                  onChanged: _updateSearchQuery,
+                  onClear: _clearSearch,
+                ),
+              ],
               const SizedBox(height: AppSpacing.l),
               _FreshFilterRow(
                 selectedStatus: _selectedStatus,
@@ -124,7 +192,15 @@ Color _statusColor(DurianStockStatus status) {
 }
 
 class _FreshHeader extends StatelessWidget {
-  const _FreshHeader();
+  const _FreshHeader({
+    required this.isSearchVisible,
+    required this.onSearchPressed,
+    required this.onResetPressed,
+  });
+
+  final bool isSearchVisible;
+  final VoidCallback onSearchPressed;
+  final VoidCallback onResetPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -144,16 +220,77 @@ class _FreshHeader extends StatelessWidget {
           ),
         ),
         IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.search),
+          onPressed: onSearchPressed,
+          icon: Icon(
+            isSearchVisible ? Icons.close_rounded : Icons.search_rounded,
+          ),
           color: AppColors.durianGreen,
         ),
         IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.tune),
+          onPressed: onResetPressed,
+          icon: const Icon(Icons.restart_alt_rounded),
           color: AppColors.durianGreen,
         ),
       ],
+    );
+  }
+}
+
+class _FreshSearchBar extends StatelessWidget {
+  const _FreshSearchBar({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFEEDFBF)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: 'Cari gerai, kawasan, jenis durian atau harga...',
+          hintStyle: const TextStyle(
+            color: Color(0xFF8A9087),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.durianGreen,
+          ),
+          suffixIcon: controller.text.isEmpty
+              ? null
+              : IconButton(
+                  onPressed: onClear,
+                  icon: const Icon(Icons.close_rounded),
+                  color: AppColors.durianGreen,
+                ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -309,7 +446,7 @@ class _EmptyFreshState extends StatelessWidget {
             ),
             SizedBox(height: 6),
             Text(
-              'Cuba pilih filter yang lain.',
+              'Cuba pilih kata carian atau filter yang lain.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFF6D756B),
