@@ -109,6 +109,52 @@ class HomeMapScreen extends StatelessWidget {
   }
 }
 
+Color _statusColor(DurianStockStatus status) {
+  switch (status) {
+    case DurianStockStatus.available:
+      return _DRColors.freshGreen;
+    case DurianStockStatus.lowStock:
+      return _DRColors.warningYellow;
+    case DurianStockStatus.soldOut:
+      return _DRColors.soldOutRed;
+  }
+}
+
+void _showDurianMarkerDetail(
+  BuildContext context, {
+  required DurianReport report,
+}) {
+  final statusColor = _statusColor(report.stockStatus);
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) {
+      return _DurianMarkerDetailSheet(
+        stallName: report.stallName,
+        area: report.area,
+        variety: report.variety,
+        price: report.price,
+        status: report.statusText,
+        updatedTime: report.updatedTime,
+        statusColor: statusColor,
+      );
+    },
+  );
+}
+
+void _showHomeSearchSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (sheetContext) {
+      return _HomeSearchSheet(parentContext: context);
+    },
+  );
+}
+
 class _DRColors {
   static const Color cream = Color(0xFFFFF7E8);
   static const Color creamSoft = Color(0xFFFFFBF1);
@@ -183,7 +229,12 @@ class _HomeTopPanel extends StatelessWidget {
                   ),
                 ),
               ),
-              _IconCircle(icon: Icons.search_rounded, onTap: () {}),
+              _IconCircle(
+                icon: Icons.search_rounded,
+                onTap: () {
+                  _showHomeSearchSheet(context);
+                },
+              ),
               const SizedBox(width: 12),
               _IconCircle(
                 icon: Icons.person_outline_rounded,
@@ -345,6 +396,468 @@ class _QuickChip extends StatelessWidget {
   }
 }
 
+class _HomeSearchSheet extends StatefulWidget {
+  const _HomeSearchSheet({required this.parentContext});
+
+  final BuildContext parentContext;
+
+  @override
+  State<_HomeSearchSheet> createState() => _HomeSearchSheetState();
+}
+
+class _HomeSearchSheetState extends State<_HomeSearchSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<DurianReport> _filterReports(List<DurianReport> reports) {
+    final query = _query.trim().toLowerCase();
+
+    if (query.isEmpty) {
+      return reports;
+    }
+
+    return reports.where((report) {
+      final searchableText = [
+        report.id,
+        report.markerLabel,
+        report.stallName,
+        report.area,
+        report.variety,
+        report.price,
+        report.statusText,
+        report.updatedTime,
+      ].join(' ').toLowerCase();
+
+      return searchableText.contains(query);
+    }).toList();
+  }
+
+  void _updateQuery(String value) {
+    setState(() {
+      _query = value;
+    });
+  }
+
+  void _clearSearch() {
+    setState(() {
+      _searchController.clear();
+      _query = '';
+    });
+  }
+
+  void _openReportDetail(DurianReport report) {
+    Navigator.pop(context);
+
+    Future.delayed(const Duration(milliseconds: 160), () {
+      if (widget.parentContext.mounted) {
+        _showDurianMarkerDetail(widget.parentContext, report: report);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sheetHeight = MediaQuery.of(context).size.height * 0.76;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: sheetHeight,
+        margin: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+        decoration: BoxDecoration(
+          color: _DRColors.cardWhite,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 5,
+              decoration: BoxDecoration(
+                color: _DRColors.borderSoft,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Cari Durian di Map',
+                        style: TextStyle(
+                          color: _DRColors.durianGreen,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Cari gerai, kawasan, jenis durian atau harga.',
+                        style: TextStyle(
+                          color: _DRColors.textMuted,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                  color: _DRColors.durianGreen,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _HomeSearchField(
+              controller: _searchController,
+              onChanged: _updateQuery,
+              onClear: _clearSearch,
+            ),
+            const SizedBox(height: 14),
+            Expanded(
+              child: ValueListenableBuilder<List<DurianReport>>(
+                valueListenable: durianReportStore,
+                builder: (context, reports, child) {
+                  final filteredReports = _filterReports(reports);
+
+                  if (filteredReports.isEmpty) {
+                    return const _HomeSearchEmptyState();
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _HomeSearchResultSummary(
+                        count: filteredReports.length,
+                        isSearching: _query.trim().isNotEmpty,
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: ListView.separated(
+                          itemCount: filteredReports.length,
+                          separatorBuilder: (context, index) {
+                            return const SizedBox(height: 10);
+                          },
+                          itemBuilder: (context, index) {
+                            final report = filteredReports[index];
+
+                            return _HomeSearchResultCard(
+                              report: report,
+                              statusColor: _statusColor(report.stockStatus),
+                              onTap: () => _openReportDetail(report),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeSearchField extends StatelessWidget {
+  const _HomeSearchField({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _DRColors.borderSoft),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: controller,
+            onChanged: onChanged,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Contoh: D24, Bukit, RM25...',
+              hintStyle: const TextStyle(
+                color: Color(0xFF8A9087),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: _DRColors.durianGreen,
+              ),
+              suffixIcon: controller.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: onClear,
+                      icon: const Icon(Icons.close_rounded),
+                      color: _DRColors.durianGreen,
+                    ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _HomeSearchResultSummary extends StatelessWidget {
+  const _HomeSearchResultSummary({
+    required this.count,
+    required this.isSearching,
+  });
+
+  final int count;
+  final bool isSearching;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = isSearching
+        ? '$count hasil carian dijumpai'
+        : '$count lokasi durian tersedia';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+      decoration: BoxDecoration(
+        color: _DRColors.creamSoft,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _DRColors.borderSoft),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.radar_rounded,
+            color: _DRColors.durianGreen,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: _DRColors.textMuted,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeSearchResultCard extends StatelessWidget {
+  const _HomeSearchResultCard({
+    required this.report,
+    required this.statusColor,
+    required this.onTap,
+  });
+
+  final DurianReport report;
+  final Color statusColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _DRColors.borderSoft),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.13),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    report.markerLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: report.markerLabel.length > 3 ? 11 : 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      report.stallName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _DRColors.textDark,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${report.area} • ${report.variety}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _DRColors.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          report.price,
+                          style: const TextStyle(
+                            color: _DRColors.durianGreen,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        CircleAvatar(radius: 4, backgroundColor: statusColor),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            report.statusText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: _DRColors.textMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeSearchEmptyState extends StatelessWidget {
+  const _HomeSearchEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _DRColors.borderSoft),
+        ),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              color: _DRColors.durianGreen,
+              size: 42,
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Tiada lokasi dijumpai',
+              style: TextStyle(
+                color: _DRColors.durianGreen,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Cuba cari nama gerai, kawasan, jenis durian atau harga lain.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _DRColors.textMuted,
+                fontSize: 13,
+                height: 1.35,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _IllustratedMapArea extends StatelessWidget {
   const _IllustratedMapArea();
 
@@ -358,38 +871,6 @@ class _IllustratedMapArea extends StatelessWidget {
     Offset(0.37, 0.36),
     Offset(0.62, 0.66),
   ];
-
-  Color _statusColor(DurianStockStatus status) {
-    switch (status) {
-      case DurianStockStatus.available:
-        return _DRColors.freshGreen;
-      case DurianStockStatus.lowStock:
-        return _DRColors.warningYellow;
-      case DurianStockStatus.soldOut:
-        return _DRColors.soldOutRed;
-    }
-  }
-
-  void _showMarkerDetail(BuildContext context, {required DurianReport report}) {
-    final statusColor = _statusColor(report.stockStatus);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return _DurianMarkerDetailSheet(
-          stallName: report.stallName,
-          area: report.area,
-          variety: report.variety,
-          price: report.price,
-          status: report.statusText,
-          updatedTime: report.updatedTime,
-          statusColor: statusColor,
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -429,7 +910,7 @@ class _IllustratedMapArea extends StatelessWidget {
                         label: report.markerLabel,
                         color: _statusColor(report.stockStatus),
                         onTap: () {
-                          _showMarkerDetail(context, report: report);
+                          _showDurianMarkerDetail(context, report: report);
                         },
                       ),
                     );
