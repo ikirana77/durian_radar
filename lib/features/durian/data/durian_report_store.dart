@@ -8,12 +8,22 @@ class DurianReportStore extends ValueNotifier<List<DurianReport>> {
 
   List<DurianReport> get reports => value;
 
+  int get totalReports => value.length;
+
   void addReport(DurianReport report) {
     value = [report, ...value];
   }
 
+  void replaceAllReports(List<DurianReport> reports) {
+    value = List<DurianReport>.from(reports);
+  }
+
   void resetToDummyData() {
     value = List<DurianReport>.from(dummyDurianReports);
+  }
+
+  List<Map<String, dynamic>> toMapList() {
+    return value.map((report) => report.toMap()).toList();
   }
 }
 

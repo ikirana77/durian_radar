@@ -49,17 +49,26 @@ class _AddReportScreenState extends State<AddReportScreen> {
     final area = _areaController.text.trim();
     final variety = _varietyController.text.trim();
     final price = _priceController.text.trim();
+    final note = _noteController.text.trim();
+    final createdAt = DateTime.now();
 
     final report = DurianReport(
-      id: 'DR${DateTime.now().millisecondsSinceEpoch}',
+      id: 'DR${createdAt.millisecondsSinceEpoch}',
       markerLabel: _markerLabelFromVariety(variety),
       stallName: stallName,
       area: area,
       variety: variety,
       price: price,
       stockStatus: _selectedStatus,
-      statusText: _statusText(_selectedStatus),
+      statusText: durianStockStatusToDisplayText(_selectedStatus),
       updatedTime: 'Baru sahaja',
+      createdAt: createdAt,
+      updatedAt: null,
+      note: note.isEmpty ? null : note,
+      latitude: _temporaryLatitude(),
+      longitude: _temporaryLongitude(),
+      reporterId: null,
+      isApproved: false,
     );
 
     durianReportStore.addReport(report);
@@ -69,6 +78,16 @@ class _AddReportScreenState extends State<AddReportScreen> {
     });
 
     _showSuccessSheet(report);
+  }
+
+  double _temporaryLatitude() {
+    final index = durianReportStore.totalReports;
+    return 3.3400 + ((index % 5) * 0.006);
+  }
+
+  double _temporaryLongitude() {
+    final index = durianReportStore.totalReports;
+    return 101.2500 + ((index % 5) * 0.007);
   }
 
   void _showSuccessSheet(DurianReport report) {
@@ -118,17 +137,6 @@ class _AddReportScreenState extends State<AddReportScreen> {
     }
 
     return cleaned.substring(0, 3);
-  }
-
-  String _statusText(DurianStockStatus status) {
-    switch (status) {
-      case DurianStockStatus.available:
-        return 'Masih Ada';
-      case DurianStockStatus.lowStock:
-        return 'Stok Sikit';
-      case DurianStockStatus.soldOut:
-        return 'Dah Habis';
-    }
   }
 
   Color _statusColor(DurianStockStatus status) {
@@ -232,7 +240,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
                       const SizedBox(height: AppSpacing.m),
                       _StockStatusSelector(
                         selectedStatus: _selectedStatus,
-                        statusText: _statusText,
+                        statusText: durianStockStatusToDisplayText,
                         statusColor: _statusColor,
                         statusIcon: _statusIcon,
                         onChanged: (status) {
@@ -359,7 +367,7 @@ class _IntroCard extends StatelessWidget {
           const SizedBox(width: 14),
           const Expanded(
             child: Text(
-              'Laporan akan masuk ke senarai Fresh Hari Ini dan muncul sebagai marker di Map secara sementara.',
+              'Laporan akan masuk ke senarai Fresh Hari Ini dan muncul sebagai marker di Map secara sementara. Data model kini disediakan untuk sambungan Supabase.',
               style: TextStyle(
                 color: Color(0xFF6D756B),
                 fontSize: 13,
@@ -510,6 +518,21 @@ class _ReportSuccessSheet extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            if (report.note != null && report.note!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                report.note!,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF6D756B),
+                  fontSize: 12,
+                  height: 1.3,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

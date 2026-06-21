@@ -1,6 +1,6 @@
 import '../models/durian_report.dart';
 
-const List<DurianReport> dummyDurianReports = [
+final List<DurianReport> dummyDurianReports = [
   DurianReport(
     id: 'DR001',
     markerLabel: 'MK',
@@ -11,6 +11,13 @@ const List<DurianReport> dummyDurianReports = [
     stockStatus: DurianStockStatus.available,
     statusText: 'Masih Ada',
     updatedTime: '12 min lepas',
+    createdAt: DateTime(2026, 6, 21, 8, 30),
+    updatedAt: DateTime(2026, 6, 21, 8, 42),
+    note: 'Gerai tepi jalan utama. Stok nampak masih banyak.',
+    latitude: 3.3186,
+    longitude: 101.3129,
+    reporterId: null,
+    isApproved: true,
   ),
   DurianReport(
     id: 'DR002',
@@ -22,6 +29,13 @@ const List<DurianReport> dummyDurianReports = [
     stockStatus: DurianStockStatus.lowStock,
     statusText: 'Stok Sikit',
     updatedTime: '25 min lepas',
+    createdAt: DateTime(2026, 6, 21, 8, 15),
+    updatedAt: DateTime(2026, 6, 21, 8, 35),
+    note: 'Pilihan D24 masih ada tetapi tidak banyak.',
+    latitude: 3.3408,
+    longitude: 101.2506,
+    reporterId: null,
+    isApproved: true,
   ),
   DurianReport(
     id: 'DR003',
@@ -33,6 +47,13 @@ const List<DurianReport> dummyDurianReports = [
     stockStatus: DurianStockStatus.available,
     statusText: 'Masih Ada',
     updatedTime: '2 jam lepas',
+    createdAt: DateTime(2026, 6, 21, 6, 45),
+    updatedAt: DateTime(2026, 6, 21, 7, 15),
+    note: 'Harga paling murah dalam dummy data buat masa ini.',
+    latitude: 3.3496,
+    longitude: 101.2460,
+    reporterId: null,
+    isApproved: true,
   ),
   DurianReport(
     id: 'DR004',
@@ -44,5 +65,12 @@ const List<DurianReport> dummyDurianReports = [
     stockStatus: DurianStockStatus.soldOut,
     statusText: 'Dah Habis',
     updatedTime: '1 jam lepas',
+    createdAt: DateTime(2026, 6, 21, 7, 10),
+    updatedAt: DateTime(2026, 6, 21, 8, 5),
+    note: 'Stok XO habis untuk sesi pagi.',
+    latitude: 3.2254,
+    longitude: 101.4271,
+    reporterId: null,
+    isApproved: true,
   ),
 ];
