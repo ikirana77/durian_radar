@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../durian/data/durian_report_store.dart';
 import '../../durian/models/durian_report.dart';
 
 class AddReportScreen extends StatefulWidget {
@@ -44,7 +45,20 @@ class _AddReportScreenState extends State<AddReportScreen> {
     final area = _areaController.text.trim();
     final variety = _varietyController.text.trim();
     final price = _priceController.text.trim();
-    final statusText = _statusText(_selectedStatus);
+
+    final report = DurianReport(
+      id: 'DR${DateTime.now().millisecondsSinceEpoch}',
+      markerLabel: _markerLabelFromVariety(variety),
+      stallName: stallName,
+      area: area,
+      variety: variety,
+      price: price,
+      stockStatus: _selectedStatus,
+      statusText: _statusText(_selectedStatus),
+      updatedTime: 'Baru sahaja',
+    );
+
+    durianReportStore.addReport(report);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -52,7 +66,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         content: Text(
-          'Laporan diterima: $stallName, $area, $variety, $price, $statusText',
+          'Laporan diterima: $stallName, $area, $variety, $price',
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w700,
@@ -62,6 +76,28 @@ class _AddReportScreenState extends State<AddReportScreen> {
     );
 
     Navigator.pop(context);
+  }
+
+  String _markerLabelFromVariety(String variety) {
+    final cleaned = variety.trim().toUpperCase();
+
+    if (cleaned.isEmpty) {
+      return 'NEW';
+    }
+
+    if (cleaned.contains('MUSANG')) {
+      return 'MK';
+    }
+
+    if (cleaned.contains('KAMPUNG')) {
+      return 'KG';
+    }
+
+    if (cleaned.length <= 4) {
+      return cleaned;
+    }
+
+    return cleaned.substring(0, 3);
   }
 
   String _statusText(DurianStockStatus status) {
@@ -120,13 +156,11 @@ class _AddReportScreenState extends State<AddReportScreen> {
                     children: [
                       const _IntroCard(),
                       const SizedBox(height: AppSpacing.l),
-
                       const _SectionTitle(
                         title: 'Maklumat Gerai',
                         subtitle: 'Masukkan maklumat asas lokasi durian.',
                       ),
                       const SizedBox(height: AppSpacing.m),
-
                       _DurianTextField(
                         controller: _stallNameController,
                         label: 'Nama gerai',
@@ -135,7 +169,6 @@ class _AddReportScreenState extends State<AddReportScreen> {
                         validatorMessage: 'Nama gerai wajib diisi.',
                       ),
                       const SizedBox(height: AppSpacing.m),
-
                       _DurianTextField(
                         controller: _areaController,
                         label: 'Kawasan',
@@ -144,13 +177,11 @@ class _AddReportScreenState extends State<AddReportScreen> {
                         validatorMessage: 'Kawasan wajib diisi.',
                       ),
                       const SizedBox(height: AppSpacing.l),
-
                       const _SectionTitle(
                         title: 'Maklumat Durian',
                         subtitle: 'Nyatakan jenis, harga dan status stok.',
                       ),
                       const SizedBox(height: AppSpacing.m),
-
                       _DurianTextField(
                         controller: _varietyController,
                         label: 'Jenis durian',
@@ -159,7 +190,6 @@ class _AddReportScreenState extends State<AddReportScreen> {
                         validatorMessage: 'Jenis durian wajib diisi.',
                       ),
                       const SizedBox(height: AppSpacing.m),
-
                       _DurianTextField(
                         controller: _priceController,
                         label: 'Harga',
@@ -169,7 +199,6 @@ class _AddReportScreenState extends State<AddReportScreen> {
                         validatorMessage: 'Harga wajib diisi.',
                       ),
                       const SizedBox(height: AppSpacing.m),
-
                       _StockStatusSelector(
                         selectedStatus: _selectedStatus,
                         statusText: _statusText,
@@ -182,13 +211,11 @@ class _AddReportScreenState extends State<AddReportScreen> {
                         },
                       ),
                       const SizedBox(height: AppSpacing.l),
-
                       const _SectionTitle(
                         title: 'Nota Tambahan',
                         subtitle: 'Optional, tapi berguna untuk pengguna lain.',
                       ),
                       const SizedBox(height: AppSpacing.m),
-
                       _DurianTextField(
                         controller: _noteController,
                         label: 'Nota ringkas',
@@ -199,7 +226,6 @@ class _AddReportScreenState extends State<AddReportScreen> {
                         isRequired: false,
                       ),
                       const SizedBox(height: AppSpacing.xl),
-
                       _SubmitButton(onPressed: _submitReport),
                     ],
                   ),
@@ -302,7 +328,7 @@ class _IntroCard extends StatelessWidget {
           const SizedBox(width: 14),
           const Expanded(
             child: Text(
-              'Laporan ini masih dummy dulu. Nanti kita sambungkan kepada database Supabase.',
+              'Laporan akan masuk ke senarai Fresh Hari Ini secara sementara. Nanti kita sambungkan kepada database Supabase.',
               style: TextStyle(
                 color: Color(0xFF6D756B),
                 fontSize: 13,

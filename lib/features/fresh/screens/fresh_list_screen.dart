@@ -5,7 +5,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/durian_bottom_nav.dart';
 import '../../../shared/widgets/durian_report_card.dart';
-import '../../durian/data/dummy_durian_reports.dart';
+import '../../durian/data/durian_report_store.dart';
 import '../../durian/models/durian_report.dart';
 import '../../home/screens/home_map_screen.dart';
 import '../../profile/screens/profile_screen.dart';
@@ -26,10 +26,10 @@ class _FreshListScreenState extends State<FreshListScreen> {
   String _searchQuery = '';
   bool _isSearchVisible = false;
 
-  List<DurianReport> get _filteredReports {
+  List<DurianReport> _filteredReports(List<DurianReport> sourceReports) {
     final query = _searchQuery.trim().toLowerCase();
 
-    return dummyDurianReports.where((report) {
+    return sourceReports.where((report) {
       final matchesStatus =
           _selectedStatus == null || report.stockStatus == _selectedStatus;
 
@@ -96,86 +96,98 @@ class _FreshListScreenState extends State<FreshListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final reports = _filteredReports;
+    return ValueListenableBuilder<List<DurianReport>>(
+      valueListenable: durianReportStore,
+      builder: (context, allReports, child) {
+        final reports = _filteredReports(allReports);
 
-    return Scaffold(
-      backgroundColor: AppColors.creamBackground,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.l),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _FreshHeader(
-                isSearchVisible: _isSearchVisible,
-                onSearchPressed: _toggleSearch,
-                onResetPressed: _resetFilters,
-              ),
-              if (_isSearchVisible) ...[
-                const SizedBox(height: AppSpacing.m),
-                _FreshSearchBar(
-                  controller: _searchController,
-                  onChanged: _updateSearchQuery,
-                  onClear: _clearSearch,
-                ),
-              ],
-              const SizedBox(height: AppSpacing.l),
-              _FreshFilterRow(
-                selectedStatus: _selectedStatus,
-                onStatusSelected: _selectStatus,
-              ),
-              const SizedBox(height: AppSpacing.l),
-              Expanded(
-                child: reports.isEmpty
-                    ? const _EmptyFreshState()
-                    : ListView.separated(
-                        itemCount: reports.length,
-                        separatorBuilder: (context, index) {
-                          return const SizedBox(height: AppSpacing.s);
-                        },
-                        itemBuilder: (context, index) {
-                          final report = reports[index];
+        return Scaffold(
+          backgroundColor: AppColors.creamBackground,
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.l),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _FreshHeader(
+                    isSearchVisible: _isSearchVisible,
+                    onSearchPressed: _toggleSearch,
+                    onResetPressed: _resetFilters,
+                  ),
+                  if (_isSearchVisible) ...[
+                    const SizedBox(height: AppSpacing.m),
+                    _FreshSearchBar(
+                      controller: _searchController,
+                      onChanged: _updateSearchQuery,
+                      onClear: _clearSearch,
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.l),
+                  _FreshFilterRow(
+                    selectedStatus: _selectedStatus,
+                    onStatusSelected: _selectStatus,
+                  ),
+                  const SizedBox(height: AppSpacing.l),
+                  _FreshResultSummary(
+                    totalCount: allReports.length,
+                    filteredCount: reports.length,
+                    hasActiveFilter:
+                        _selectedStatus != null || _searchQuery.isNotEmpty,
+                  ),
+                  const SizedBox(height: AppSpacing.m),
+                  Expanded(
+                    child: reports.isEmpty
+                        ? const _EmptyFreshState()
+                        : ListView.separated(
+                            itemCount: reports.length,
+                            separatorBuilder: (context, index) {
+                              return const SizedBox(height: AppSpacing.s);
+                            },
+                            itemBuilder: (context, index) {
+                              final report = reports[index];
 
-                          return DurianReportCard(
-                            stallName: report.stallName,
-                            area: report.area,
-                            variety: report.variety,
-                            price: report.price,
-                            status: report.statusText,
-                            updatedTime: report.updatedTime,
-                            statusColor: _statusColor(report.stockStatus),
-                          );
-                        },
-                      ),
+                              return DurianReportCard(
+                                stallName: report.stallName,
+                                area: report.area,
+                                variety: report.variety,
+                                price: report.price,
+                                status: report.statusText,
+                                updatedTime: report.updatedTime,
+                                statusColor: _statusColor(report.stockStatus),
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
-      bottomNavigationBar: widget.showBottomNavigationBar
-          ? DurianBottomNav(
-              selectedIndex: 1,
-              onDestinationSelected: (index) {
-                if (index == 0) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const HomeMapScreen(),
-                    ),
-                  );
-                }
+          bottomNavigationBar: widget.showBottomNavigationBar
+              ? DurianBottomNav(
+                  selectedIndex: 1,
+                  onDestinationSelected: (index) {
+                    if (index == 0) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HomeMapScreen(),
+                        ),
+                      );
+                    }
 
-                if (index == 2) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProfileScreen(),
-                    ),
-                  );
-                }
-              },
-            )
-          : null,
+                    if (index == 2) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ProfileScreen(),
+                        ),
+                      );
+                    }
+                  },
+                )
+              : null,
+        );
+      },
     );
   }
 }
@@ -249,48 +261,53 @@ class _FreshSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFEEDFBF)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFEEDFBF)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: 'Cari gerai, kawasan, jenis durian atau harga...',
-          hintStyle: const TextStyle(
-            color: Color(0xFF8A9087),
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
+          child: TextField(
+            controller: controller,
+            onChanged: onChanged,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Cari gerai, kawasan, jenis durian atau harga...',
+              hintStyle: const TextStyle(
+                color: Color(0xFF8A9087),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.durianGreen,
+              ),
+              suffixIcon: controller.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: onClear,
+                      icon: const Icon(Icons.close_rounded),
+                      color: AppColors.durianGreen,
+                    ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
           ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.durianGreen,
-          ),
-          suffixIcon: controller.text.isEmpty
-              ? null
-              : IconButton(
-                  onPressed: onClear,
-                  icon: const Icon(Icons.close_rounded),
-                  color: AppColors.durianGreen,
-                ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -408,6 +425,55 @@ class _FreshStatusChip extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _FreshResultSummary extends StatelessWidget {
+  const _FreshResultSummary({
+    required this.totalCount,
+    required this.filteredCount,
+    required this.hasActiveFilter,
+  });
+
+  final int totalCount;
+  final int filteredCount;
+  final bool hasActiveFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = hasActiveFilter
+        ? '$filteredCount daripada $totalCount laporan dijumpai'
+        : '$totalCount laporan fresh tersedia';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFEEDFBF)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.list_alt_rounded,
+            color: AppColors.durianGreen,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Color(0xFF6D756B),
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
