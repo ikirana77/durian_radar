@@ -105,7 +105,7 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
       ),
       bottomNavigationBar: _HomeBottomBar(
         onFreshTap: () {
-          Navigator.pushReplacement(
+          Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const FreshListScreen()),
           );
@@ -1227,5 +1227,6 @@ class _SoftMapPainter extends CustomPainter {
     return false;
   }
 }
+
 
 
