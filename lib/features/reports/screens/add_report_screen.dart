@@ -20,6 +20,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
   final TextEditingController _areaController = TextEditingController();
   final TextEditingController _varietyController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _sellerPhoneController = TextEditingController();
 
   String _selectedStockStatus = 'Banyak';
   bool _isSubmitting = false;
@@ -34,6 +35,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
     _areaController.dispose();
     _varietyController.dispose();
     _priceController.dispose();
+    _sellerPhoneController.dispose();
     super.dispose();
   }
 
@@ -44,6 +46,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
     final area = _areaController.text.trim();
     final variety = _varietyController.text.trim();
     final priceText = _priceController.text.trim();
+    final sellerPhone = _sellerPhoneController.text.trim();
 
     if (stallName.isEmpty) {
       _showStatus('Sila masukkan nama gerai atau lokasi.', isError: true);
@@ -96,6 +99,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
   variety: variety,
   pricePerKg: price,
   stockStatus: _selectedStockStatus,
+  sellerPhone: sellerPhone,
 );
 
       if (!mounted) return;
@@ -192,6 +196,15 @@ class _AddReportScreenState extends State<AddReportScreen> {
                 label: 'Kawasan',
                 hint: 'Contoh: Kuala Selangor',
                 icon: Icons.location_on_outlined,
+                enabled: !_isSubmitting,
+              ),
+              const SizedBox(height: AppSpacing.m),
+              _AppTextField(
+                controller: _sellerPhoneController,
+                label: 'Telefon / WhatsApp penjual',
+                hint: 'Contoh: 60123456789',
+                icon: Icons.phone_android,
+                keyboardType: TextInputType.phone,
                 enabled: !_isSubmitting,
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -605,3 +618,4 @@ class _StatusBox extends StatelessWidget {
     );
   }
 }
+

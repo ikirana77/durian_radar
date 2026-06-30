@@ -414,18 +414,64 @@ class _ActionPanel extends StatelessWidget {
     }
   }
 
-  void _showContactComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Fungsi WhatsApp/telefon penjual akan dibuat dalam checkpoint seterusnya.',
+  Future<void> _openWhatsApp(BuildContext context) async {
+    final normalizedPhone = _normalizeMalaysianPhone(report.sellerPhone);
+
+    if (normalizedPhone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Nombor WhatsApp penjual belum tersedia untuk laporan ini.',
+          ),
         ),
-      ),
+      );
+      return;
+    }
+
+    final message = Uri.encodeComponent(
+      'Hai, saya jumpa lokasi durian anda melalui aplikasi Durian Radar. Masih ada stok?',
     );
+
+    final uri = Uri.parse(
+      'https://wa.me/$normalizedPhone?text=$message',
+    );
+
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Tidak dapat membuka WhatsApp.',
+          ),
+        ),
+      );
+    }
+  }
+
+  String _normalizeMalaysianPhone(String value) {
+    var digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (digits.isEmpty) {
+      return '';
+    }
+
+    if (digits.startsWith('0')) {
+      digits = '6$digits';
+    } else if (digits.startsWith('1')) {
+      digits = '60$digits';
+    }
+
+    return digits;
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasPhone = report.sellerPhone.trim().isNotEmpty;
+
     return _WhiteCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,25 +505,29 @@ class _ActionPanel extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () => _showContactComingSoon(context),
+                  onPressed: () => _openWhatsApp(context),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFFFFC857),
                     foregroundColor: _darkGreen,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  icon: const Icon(Icons.phone_rounded),
-                  label: const Text(
-                    'Hubungi',
-                    style: TextStyle(fontWeight: FontWeight.w900),
+                  icon: Icon(
+                    hasPhone ? Icons.chat_rounded : Icons.phone_disabled_rounded,
+                  ),
+                  label: Text(
+                    hasPhone ? 'WhatsApp' : 'Hubungi',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Navigasi menggunakan koordinat laporan daripada Supabase. Untuk checkpoint ini, laporan test masih menggunakan koordinat sementara.',
-            style: TextStyle(
+          Text(
+            hasPhone
+                ? 'Butang WhatsApp menggunakan nombor penjual yang dihantar bersama laporan komuniti.'
+                : 'Nombor penjual belum tersedia untuk laporan ini.',
+            style: const TextStyle(
               color: _textMuted,
               height: 1.3,
               fontSize: 12,
@@ -812,5 +862,6 @@ class _DetailMapPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
 
 

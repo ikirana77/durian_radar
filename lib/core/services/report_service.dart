@@ -18,6 +18,7 @@ class DurianReportSummary {
     required this.latitude,
     required this.longitude,
     required this.isApproved,
+    required this.sellerPhone,
   });
 
   final String id;
@@ -33,7 +34,7 @@ class DurianReportSummary {
   final double latitude;
   final double longitude;
   final bool isApproved;
-
+  final String sellerPhone;
   factory DurianReportSummary.fromMap(Map<String, dynamic> map) {
     return DurianReportSummary(
       id: (map['id'] ?? '').toString(),
@@ -49,6 +50,7 @@ class DurianReportSummary {
       latitude: _toDouble(map['latitude']),
       longitude: _toDouble(map['longitude']),
       isApproved: map['is_approved'] == true,
+      sellerPhone: (map['seller_phone'] ?? '').toString(),
     );
   }
 
@@ -87,6 +89,7 @@ class ReportService {
     required String variety,
     required double pricePerKg,
     required String stockStatus,
+    String? sellerPhone,
     String? photoUrl,
   }) async {
     final user = AuthService.currentUser;
@@ -100,7 +103,7 @@ class ReportService {
     final trimmedArea = area.trim();
     final trimmedVariety = variety.trim();
     final trimmedStockStatus = stockStatus.trim();
-
+    final trimmedSellerPhone = sellerPhone?.trim() ?? '';
     if (trimmedStallName.isEmpty) {
       throw const AuthException('Nama gerai atau lokasi diperlukan.');
     }
@@ -135,6 +138,7 @@ class ReportService {
     await _client.from('durian_reports').insert({
       'marker_label': markerLabel,
       'stall_name': trimmedStallName,
+      'seller_phone': trimmedSellerPhone,
       'area': trimmedArea,
       'variety': trimmedVariety,
       'price': 'RM${pricePerKg.toStringAsFixed(0)}/kg',
@@ -164,6 +168,7 @@ class ReportService {
       id,
       marker_label,
       stall_name,
+      seller_phone,
       area,
       variety,
       price,
@@ -265,6 +270,7 @@ class ReportService {
           id,
           marker_label,
           stall_name,
+          seller_phone,
           area,
           variety,
           price,
@@ -330,3 +336,4 @@ class ReportService {
     return 'Laporan gagal diproses. Sila cuba lagi.';
   }
 }
+
