@@ -3,6 +3,78 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth_service.dart';
 import 'supabase_service.dart';
 
+class DurianReportSummary {
+  const DurianReportSummary({
+    required this.id,
+    required this.markerLabel,
+    required this.stallName,
+    required this.area,
+    required this.variety,
+    required this.price,
+    required this.stockStatus,
+    required this.statusText,
+    required this.updatedTime,
+    required this.note,
+    required this.latitude,
+    required this.longitude,
+    required this.isApproved,
+  });
+
+  final String id;
+  final String markerLabel;
+  final String stallName;
+  final String area;
+  final String variety;
+  final String price;
+  final String stockStatus;
+  final String statusText;
+  final String updatedTime;
+  final String note;
+  final double latitude;
+  final double longitude;
+  final bool isApproved;
+
+  factory DurianReportSummary.fromMap(Map<String, dynamic> map) {
+    return DurianReportSummary(
+      id: (map['id'] ?? '').toString(),
+      markerLabel: (map['marker_label'] ?? 'DR').toString(),
+      stallName: (map['stall_name'] ?? 'Lokasi Durian').toString(),
+      area: (map['area'] ?? 'Kawasan tidak dinyatakan').toString(),
+      variety: (map['variety'] ?? 'Durian').toString(),
+      price: (map['price'] ?? _formatPrice(map['price_per_kg'])).toString(),
+      stockStatus: (map['stock_status'] ?? 'available').toString(),
+      statusText: (map['status_text'] ?? 'Status belum dikemaskini').toString(),
+      updatedTime: (map['updated_time'] ?? 'Baru dikemaskini').toString(),
+      note: (map['note'] ?? '').toString(),
+      latitude: _toDouble(map['latitude']),
+      longitude: _toDouble(map['longitude']),
+      isApproved: map['is_approved'] == true,
+    );
+  }
+
+  static String _formatPrice(dynamic value) {
+    final parsed = _toDouble(value);
+
+    if (parsed <= 0) {
+      return 'Harga tidak dinyatakan';
+    }
+
+    return 'RM${parsed.toStringAsFixed(0)}/kg';
+  }
+
+  static double _toDouble(dynamic value) {
+    if (value == null) {
+      return 0;
+    }
+
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    return double.tryParse(value.toString()) ?? 0;
+  }
+}
+
 class ReportService {
   ReportService._();
 
@@ -84,6 +156,51 @@ class ReportService {
     });
   }
 
+  static Future<List<DurianReportSummary>> fetchLatestReports({
+    bool approvedOnly = false,
+    int limit = 20,
+  }) async {
+    dynamic query = _client.from('durian_reports').select('''
+      id,
+      marker_label,
+      stall_name,
+      area,
+      variety,
+      price,
+      price_per_kg,
+      stock_status,
+      status_text,
+      updated_time,
+      note,
+      latitude,
+      longitude,
+      is_approved,
+      reported_at,
+      status
+    ''');
+
+    if (approvedOnly) {
+      query = query.eq('is_approved', true);
+    }
+
+    final response = await query
+        .order('reported_at', ascending: false)
+        .limit(limit);
+
+    return (response as List<dynamic>)
+        .map((item) => DurianReportSummary.fromMap(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<List<DurianReportSummary>> fetchApprovedReports({
+    int limit = 20,
+  }) {
+    return fetchLatestReports(
+      approvedOnly: true,
+      limit: limit,
+    );
+  }
+
   static String _mapStockStatus(String stockStatus) {
     switch (stockStatus) {
       case 'Banyak':
@@ -149,6 +266,6 @@ class ReportService {
       return error.message;
     }
 
-    return 'Laporan gagal dihantar. Sila cuba lagi.';
+    return 'Laporan gagal diproses. Sila cuba lagi.';
   }
 }
