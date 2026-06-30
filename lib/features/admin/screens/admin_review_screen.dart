@@ -149,6 +149,10 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
     required Future<void> Function() action,
     required String successMessage,
   }) async {
+    if (_busyReportId != null) {
+      return;
+    }
+
     setState(() {
       _busyReportId = '${report.id}-$actionLabel';
     });
@@ -156,19 +160,28 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
     try {
       await action();
 
+      final updatedReports = await ReportService.fetchPendingReports();
+
       if (!mounted) {
         return;
       }
+
+      setState(() {
+        _pendingReportsFuture = Future.value(updatedReports);
+        _busyReportId = null;
+      });
 
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(successMessage)));
-
-      setState(_loadPendingReports);
     } catch (error) {
       if (!mounted) {
         return;
       }
+
+      setState(() {
+        _busyReportId = null;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -176,12 +189,6 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
           backgroundColor: Colors.red,
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busyReportId = null;
-        });
-      }
     }
   }
 
