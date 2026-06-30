@@ -50,7 +50,18 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
       backgroundColor: _DRColors.cream,
       body: Stack(
         children: [
-          const Positioned.fill(child: _IllustratedMapArea()),
+                    Positioned.fill(
+            child: FutureBuilder<List<DurianReportSummary>>(
+              future: _reportsFuture,
+              builder: (context, snapshot) {
+                return _IllustratedMapArea(
+                  reports: snapshot.data ?? const [],
+                  isLoading: snapshot.connectionState ==
+                      ConnectionState.waiting,
+                );
+              },
+            ),
+          ),
 
           const Positioned(
             top: 0,
@@ -368,7 +379,24 @@ class _QuickChip extends StatelessWidget {
 }
 
 class _IllustratedMapArea extends StatelessWidget {
-  const _IllustratedMapArea();
+  const _IllustratedMapArea({
+    required this.reports,
+    required this.isLoading,
+  });
+
+  final List<DurianReportSummary> reports;
+  final bool isLoading;
+
+  static const List<Offset> _markerAnchors = [
+    Offset(0.55, 0.32),
+    Offset(0.25, 0.43),
+    Offset(0.72, 0.49),
+    Offset(0.49, 0.60),
+    Offset(0.38, 0.36),
+    Offset(0.62, 0.68),
+    Offset(0.18, 0.55),
+    Offset(0.80, 0.37),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -378,47 +406,121 @@ class _IllustratedMapArea extends StatelessWidget {
         builder: (context, constraints) {
           final width = constraints.maxWidth;
           final height = constraints.maxHeight;
+          final visibleReports = reports
+              .take(_markerAnchors.length)
+              .toList(growable: false);
 
           return Stack(
             children: [
               const Positioned.fill(
                 child: CustomPaint(painter: _SoftMapPainter()),
               ),
-              Positioned(
-                top: height * 0.32,
-                left: width * 0.55,
-                child: const _MapMarker(
-                  label: 'MK',
-                  color: _DRColors.freshGreen,
+              if (isLoading)
+                Positioned(
+                  top: (height * 0.46).clamp(210.0, height - 180).toDouble(),
+                  left: (width * 0.22).clamp(18.0, width - 210).toDouble(),
+                  child: const _MapStatusPill(
+                    label: 'Memuatkan pin Supabase...',
+                  ),
                 ),
-              ),
-              Positioned(
-                top: height * 0.43,
-                left: width * 0.25,
-                child: const _MapMarker(
-                  label: 'D24',
-                  color: _DRColors.warningYellow,
+              for (int index = 0; index < visibleReports.length; index++)
+                _buildReportMarker(
+                  report: visibleReports[index],
+                  index: index,
+                  width: width,
+                  height: height,
                 ),
-              ),
-              Positioned(
-                top: height * 0.49,
-                right: width * 0.15,
-                child: const _MapMarker(
-                  label: 'KG',
-                  color: _DRColors.freshGreen,
-                ),
-              ),
-              Positioned(
-                top: height * 0.60,
-                left: width * 0.49,
-                child: const _MapMarker(
-                  label: 'Habis',
-                  color: _DRColors.soldOutRed,
-                ),
-              ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildReportMarker({
+    required DurianReportSummary report,
+    required int index,
+    required double width,
+    required double height,
+  }) {
+    final anchor = _markerAnchors[index % _markerAnchors.length];
+
+    final left = (width * anchor.dx).clamp(12.0, width - 90).toDouble();
+    final top = (height * anchor.dy).clamp(210.0, height - 180).toDouble();
+
+    return Positioned(
+      top: top,
+      left: left,
+      child: _MapMarker(
+        label: report.markerLabel,
+        color: _markerColor(report.stockStatus),
+      ),
+    );
+  }
+
+  Color _markerColor(String stockStatus) {
+    switch (stockStatus) {
+      case 'available':
+        return _DRColors.freshGreen;
+      case 'low_stock':
+        return _DRColors.warningYellow;
+      case 'sold_out':
+        return _DRColors.soldOutRed;
+      default:
+        return _DRColors.freshGreen;
+    }
+  }
+}
+
+class _MapStatusPill extends StatelessWidget {
+  const _MapStatusPill({
+    required this.label,
+  });
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 9,
+      ),
+      decoration: BoxDecoration(
+        color: _DRColors.cardWhite.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: _DRColors.borderSoft,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: _DRColors.durianGreen,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: _DRColors.textDark,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1114,3 +1216,4 @@ class _SoftMapPainter extends CustomPainter {
     return false;
   }
 }
+
