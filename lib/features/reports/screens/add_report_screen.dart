@@ -114,22 +114,20 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
     try {
       await ReportService.createPendingReport(
-  spotId: _temporarySpotId,
-  stallName: stallName,
-  area: area,
-  variety: variety,
-  pricePerKg: price,
-  stockStatus: _selectedStockStatus,
-  latitude: latitude,
-  longitude: longitude,
-  sellerPhone: sellerPhone,
-);
+        spotId: _temporarySpotId,
+        stallName: stallName,
+        area: area,
+        variety: variety,
+        pricePerKg: price,
+        stockStatus: _selectedStockStatus,
+        latitude: latitude,
+        longitude: longitude,
+        sellerPhone: sellerPhone,
+      );
 
       if (!mounted) return;
 
-      _showStatus(
-        'Laporan berjaya dihantar untuk semakan admin.',
-      );
+      _showStatus('Laporan berjaya dihantar untuk semakan admin.');
 
       await Future<void>.delayed(const Duration(milliseconds: 900));
 
@@ -138,10 +136,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
     } catch (error) {
       if (!mounted) return;
 
-      _showStatus(
-        ReportService.getReadableError(error),
-        isError: true,
-      );
+      _showStatus(ReportService.getReadableError(error), isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -159,9 +154,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
     return Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (context) => const LoginRegisterScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const LoginRegisterScreen()),
     );
   }
 
@@ -190,6 +183,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
     _showStatus('Lokasi peta berjaya dipilih.');
   }
+
   Future<void> _useCurrentLocation() async {
     if (_isGettingLocation) {
       return;
@@ -247,9 +241,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
       _latitudeController.text = position.latitude.toStringAsFixed(6);
       _longitudeController.text = position.longitude.toStringAsFixed(6);
 
-      _showStatus(
-        'Lokasi semasa berjaya diambil.',
-      );
+      _showStatus('Lokasi semasa berjaya diambil.');
     } catch (error) {
       if (!mounted) {
         return;
@@ -267,6 +259,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
       }
     }
   }
+
   double? _parseOptionalCoordinate(String value) {
     if (value.trim().isEmpty) {
       return null;
@@ -295,9 +288,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -341,71 +332,13 @@ class _AddReportScreenState extends State<AddReportScreen> {
                 enabled: !_isSubmitting,
               ),
               const SizedBox(height: AppSpacing.m),
-              Row(
-                children: [
-                  Expanded(
-                    child: _AppTextField(
-                      controller: _latitudeController,
-                      label: 'Latitude',
-                      hint: '3.3400',
-                      icon: Icons.my_location,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                        signed: true,
-                      ),
-                      enabled: !_isSubmitting,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.s),
-                  Expanded(
-                    child: _AppTextField(
-                      controller: _longitudeController,
-                      label: 'Longitude',
-                      hint: '101.2500',
-                      icon: Icons.explore,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                        signed: true,
-                      ),
-                      enabled: !_isSubmitting,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              const Text(
-                'Optional: Jika kosong, app guna koordinat sementara Kuala Selangor.',
-                style: AppTextStyles.helper,
-              ),
-              const SizedBox(height: AppSpacing.m),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _isSubmitting || _isGettingLocation
-                      ? null
-                      : _useCurrentLocation,
-                  icon: _isGettingLocation
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.my_location_rounded),
-                  label: Text(
-                    _isGettingLocation
-                        ? 'Sedang Ambil Lokasi...'
-                        : 'Gunakan Lokasi Semasa',
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.s),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _isSubmitting ? null : _pickLocationOnMap,
-                  icon: const Icon(Icons.map_rounded),
-                  label: const Text('Pilih Lokasi Atas Peta'),
-                ),
+              _LocationPickerCard(
+                latitudeController: _latitudeController,
+                longitudeController: _longitudeController,
+                isSubmitting: _isSubmitting,
+                isGettingLocation: _isGettingLocation,
+                onUseCurrentLocation: _useCurrentLocation,
+                onPickLocationOnMap: _pickLocationOnMap,
               ),
               const SizedBox(height: AppSpacing.xl),
               const _FormSectionTitle(number: '2', title: 'Jenis & Harga'),
@@ -442,10 +375,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
               const _PhotoUploadDummy(),
               if (_statusMessage != null) ...[
                 const SizedBox(height: AppSpacing.l),
-                _StatusBox(
-                  message: _statusMessage!,
-                  isError: _isStatusError,
-                ),
+                _StatusBox(message: _statusMessage!, isError: _isStatusError),
               ],
               const SizedBox(height: AppSpacing.xl),
               SizedBox(
@@ -537,11 +467,196 @@ class _LocationPreviewCard extends StatelessWidget {
           SizedBox(width: AppSpacing.m),
           Expanded(
             child: Text(
-              'Untuk checkpoint ini, laporan dihantar ke Supabase menggunakan lokasi sementara. Sambungan map/location sebenar akan dibuat selepas ini.',
+              'Pilih lokasi gerai menggunakan GPS semasa atau peta. Koordinat akan disimpan untuk navigasi Google Maps.',
               style: AppTextStyles.helper,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LocationPickerCard extends StatelessWidget {
+  const _LocationPickerCard({
+    required this.latitudeController,
+    required this.longitudeController,
+    required this.isSubmitting,
+    required this.isGettingLocation,
+    required this.onUseCurrentLocation,
+    required this.onPickLocationOnMap,
+  });
+
+  final TextEditingController latitudeController;
+  final TextEditingController longitudeController;
+  final bool isSubmitting;
+  final bool isGettingLocation;
+  final VoidCallback onUseCurrentLocation;
+  final VoidCallback onPickLocationOnMap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.l),
+      decoration: BoxDecoration(
+        color: AppColors.softCardWhite,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.borderSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.paleGreen,
+                  borderRadius: BorderRadius.circular(AppRadius.button),
+                ),
+                child: const Icon(
+                  Icons.location_on_rounded,
+                  color: AppColors.durianGreen,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.m),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Lokasi gerai', style: AppTextStyles.cardTitle),
+                    SizedBox(height: 4),
+                    Text(
+                      'Pilih cara paling mudah untuk simpan lokasi.',
+                      style: AppTextStyles.helper,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.l),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: isSubmitting || isGettingLocation
+                  ? null
+                  : onUseCurrentLocation,
+              icon: isGettingLocation
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.my_location_rounded),
+              label: Text(
+                isGettingLocation
+                    ? 'Sedang Ambil Lokasi...'
+                    : 'Gunakan Lokasi Semasa',
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: isSubmitting ? null : onPickLocationOnMap,
+              icon: const Icon(Icons.map_rounded),
+              label: const Text('Pilih Lokasi Atas Peta'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.l),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.m),
+            decoration: BoxDecoration(
+              color: AppColors.creamBackground,
+              borderRadius: BorderRadius.circular(AppRadius.button),
+              border: Border.all(color: AppColors.borderSoft),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Koordinat teknikal',
+                  style: TextStyle(
+                    color: AppColors.durianGreen,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                const Text(
+                  'Auto-fill selepas guna lokasi semasa atau pilih atas peta.',
+                  style: AppTextStyles.helper,
+                ),
+                const SizedBox(height: AppSpacing.m),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _SmallCoordinateField(
+                        controller: latitudeController,
+                        label: 'Latitude',
+                        hint: '3.3400',
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.s),
+                    Expanded(
+                      child: _SmallCoordinateField(
+                        controller: longitudeController,
+                        label: 'Longitude',
+                        hint: '101.2500',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SmallCoordinateField extends StatelessWidget {
+  const _SmallCoordinateField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(
+        decimal: true,
+        signed: true,
+      ),
+      decoration: InputDecoration(
+        isDense: true,
+        labelText: label,
+        hintText: hint,
+        filled: true,
+        fillColor: AppColors.softCardWhite,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button),
+          borderSide: const BorderSide(color: AppColors.borderSoft),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button),
+          borderSide: const BorderSide(color: AppColors.borderSoft),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button),
+          borderSide: const BorderSide(color: AppColors.durianGreen, width: 2),
+        ),
       ),
     );
   }
@@ -772,10 +887,7 @@ class _PhotoUploadDummy extends StatelessWidget {
 }
 
 class _StatusBox extends StatelessWidget {
-  const _StatusBox({
-    required this.message,
-    required this.isError,
-  });
+  const _StatusBox({required this.message, required this.isError});
 
   final String message;
   final bool isError;
@@ -818,7 +930,3 @@ class _StatusBox extends StatelessWidget {
     );
   }
 }
-
-
-
-
