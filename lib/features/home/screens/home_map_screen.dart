@@ -4,6 +4,7 @@ import '../../../core/services/report_service.dart';
 
 import '../../admin/screens/admin_review_screen.dart';
 import '../../fresh/screens/fresh_list_screen.dart';
+import '../../pin_detail/screens/pin_detail_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../reports/screens/add_report_screen.dart';
 
@@ -434,8 +435,17 @@ class _IllustratedMapArea extends StatelessWidget {
                     label: 'Memuatkan pin Supabase...',
                   ),
                 ),
+              if (!isLoading && visibleReports.isEmpty)
+                Positioned(
+                  top: (height * 0.46).clamp(210.0, height - 180).toDouble(),
+                  left: (width * 0.16).clamp(18.0, width - 250).toDouble(),
+                  child: const _MapStatusPill(
+                    label: 'Tiada pin approved lagi',
+                  ),
+                ),
               for (int index = 0; index < visibleReports.length; index++)
                 _buildReportMarker(
+                  context: context,
                   report: visibleReports[index],
                   index: index,
                   width: width,
@@ -449,6 +459,7 @@ class _IllustratedMapArea extends StatelessWidget {
   }
 
   Widget _buildReportMarker({
+    required BuildContext context,
     required DurianReportSummary report,
     required int index,
     required double width,
@@ -462,9 +473,21 @@ class _IllustratedMapArea extends StatelessWidget {
     return Positioned(
       top: top,
       left: left,
-      child: _MapMarker(
-        label: report.markerLabel,
-        color: _markerColor(report.stockStatus),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PinDetailScreen(
+                report: report,
+              ),
+            ),
+          );
+        },
+        child: _MapMarker(
+          label: report.markerLabel,
+          color: _markerColor(report.stockStatus),
+        ),
       ),
     );
   }
@@ -514,15 +537,24 @@ class _MapStatusPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
+          if (label.contains('Memuatkan')) ...[
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: _DRColors.durianGreen,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ] else ...[
+            const Icon(
+              Icons.info_outline_rounded,
+              size: 16,
               color: _DRColors.durianGreen,
             ),
-          ),
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
+          ],
           Text(
             label,
             style: const TextStyle(
@@ -1227,6 +1259,7 @@ class _SoftMapPainter extends CustomPainter {
     return false;
   }
 }
+
 
 
 
