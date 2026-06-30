@@ -89,6 +89,8 @@ class ReportService {
     required String variety,
     required double pricePerKg,
     required String stockStatus,
+    double? latitude,
+    double? longitude,
     String? sellerPhone,
     String? photoUrl,
   }) async {
@@ -104,6 +106,8 @@ class ReportService {
     final trimmedVariety = variety.trim();
     final trimmedStockStatus = stockStatus.trim();
     final trimmedSellerPhone = sellerPhone?.trim() ?? '';
+    final reportLatitude = latitude ?? 3.3400;
+    final reportLongitude = longitude ?? 101.2500;
     if (trimmedStallName.isEmpty) {
       throw const AuthException('Nama gerai atau lokasi diperlukan.');
     }
@@ -147,8 +151,8 @@ class ReportService {
       'status_text': statusText,
       'updated_time': 'Baru sahaja',
       'note': 'Laporan dihantar melalui aplikasi Durian Radar.',
-      'latitude': 3.3400,
-      'longitude': 101.2500,
+      'latitude': reportLatitude,
+      'longitude': reportLongitude,
       'reporter_id': user.id,
       'is_approved': false,
       'spot_id': trimmedSpotId,
@@ -336,4 +340,5 @@ class ReportService {
     return 'Laporan gagal diproses. Sila cuba lagi.';
   }
 }
+
 

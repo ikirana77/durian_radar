@@ -21,6 +21,8 @@ class _AddReportScreenState extends State<AddReportScreen> {
   final TextEditingController _varietyController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _sellerPhoneController = TextEditingController();
+  final TextEditingController _latitudeController = TextEditingController();
+  final TextEditingController _longitudeController = TextEditingController();
 
   String _selectedStockStatus = 'Banyak';
   bool _isSubmitting = false;
@@ -36,6 +38,8 @@ class _AddReportScreenState extends State<AddReportScreen> {
     _varietyController.dispose();
     _priceController.dispose();
     _sellerPhoneController.dispose();
+    _latitudeController.dispose();
+    _longitudeController.dispose();
     super.dispose();
   }
 
@@ -47,6 +51,8 @@ class _AddReportScreenState extends State<AddReportScreen> {
     final variety = _varietyController.text.trim();
     final priceText = _priceController.text.trim();
     final sellerPhone = _sellerPhoneController.text.trim();
+    final latitudeText = _latitudeController.text.trim();
+    final longitudeText = _longitudeController.text.trim();
 
     if (stallName.isEmpty) {
       _showStatus('Sila masukkan nama gerai atau lokasi.', isError: true);
@@ -60,6 +66,18 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
     if (variety.isEmpty) {
       _showStatus('Sila masukkan jenis durian.', isError: true);
+      return;
+    }
+
+    final latitude = _parseOptionalCoordinate(latitudeText);
+    final longitude = _parseOptionalCoordinate(longitudeText);
+
+    if ((latitudeText.isNotEmpty && latitude == null) ||
+        (longitudeText.isNotEmpty && longitude == null)) {
+      _showStatus(
+        'Sila masukkan koordinat yang sah. Contoh latitude: 3.3400, longitude: 101.2500.',
+        isError: true,
+      );
       return;
     }
 
@@ -99,6 +117,8 @@ class _AddReportScreenState extends State<AddReportScreen> {
   variety: variety,
   pricePerKg: price,
   stockStatus: _selectedStockStatus,
+  latitude: latitude,
+  longitude: longitude,
   sellerPhone: sellerPhone,
 );
 
@@ -140,6 +160,14 @@ class _AddReportScreenState extends State<AddReportScreen> {
         builder: (context) => const LoginRegisterScreen(),
       ),
     );
+  }
+
+  double? _parseOptionalCoordinate(String value) {
+    if (value.trim().isEmpty) {
+      return null;
+    }
+
+    return double.tryParse(value.trim().replaceAll(',', '.'));
   }
 
   double? _parsePrice(String value) {
@@ -206,6 +234,43 @@ class _AddReportScreenState extends State<AddReportScreen> {
                 icon: Icons.phone_android,
                 keyboardType: TextInputType.phone,
                 enabled: !_isSubmitting,
+              ),
+              const SizedBox(height: AppSpacing.m),
+              Row(
+                children: [
+                  Expanded(
+                    child: _AppTextField(
+                      controller: _latitudeController,
+                      label: 'Latitude',
+                      hint: '3.3400',
+                      icon: Icons.my_location,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      enabled: !_isSubmitting,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.s),
+                  Expanded(
+                    child: _AppTextField(
+                      controller: _longitudeController,
+                      label: 'Longitude',
+                      hint: '101.2500',
+                      icon: Icons.explore,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      enabled: !_isSubmitting,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              const Text(
+                'Optional: Jika kosong, app guna koordinat sementara Kuala Selangor.',
+                style: AppTextStyles.helper,
               ),
               const SizedBox(height: AppSpacing.xl),
               const _FormSectionTitle(number: '2', title: 'Jenis & Harga'),
@@ -618,4 +683,5 @@ class _StatusBox extends StatelessWidget {
     );
   }
 }
+
 
