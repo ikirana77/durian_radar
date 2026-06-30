@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/report_service.dart';
+import '../../pin_detail/screens/pin_detail_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../reports/screens/add_report_screen.dart';
 
@@ -142,8 +143,20 @@ class _FreshListScreenState extends State<FreshListScreen> {
                         itemBuilder: (context, index) {
                           final report = reports[index];
 
-                          return _FreshReportCard(
-                            report: report,
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PinDetailScreen(
+                                    report: report,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: _FreshReportCard(
+                              report: report,
+                            ),
                           );
                         },
                       ),
@@ -711,4 +724,6 @@ class _EmptyView extends StatelessWidget {
     );
   }
 }
+
+
 
