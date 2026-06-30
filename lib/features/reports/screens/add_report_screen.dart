@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/report_service.dart';
@@ -26,6 +27,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
   String _selectedStockStatus = 'Banyak';
   bool _isSubmitting = false;
+  bool _isGettingLocation = false;
   String? _statusMessage;
   bool _isStatusError = false;
 
@@ -162,6 +164,83 @@ class _AddReportScreenState extends State<AddReportScreen> {
     );
   }
 
+  Future<void> _useCurrentLocation() async {
+    if (_isGettingLocation) {
+      return;
+    }
+
+    setState(() {
+      _isGettingLocation = true;
+      _statusMessage = 'Sedang mendapatkan lokasi semasa...';
+      _isStatusError = false;
+    });
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+
+      if (!serviceEnabled) {
+        _showStatus(
+          'Location service belum diaktifkan. Sila aktifkan GPS/location pada device.',
+          isError: true,
+        );
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied) {
+        _showStatus(
+          'Permission lokasi tidak dibenarkan. Sila allow location untuk guna fungsi ini.',
+          isError: true,
+        );
+        return;
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _showStatus(
+          'Permission lokasi disekat. Sila buka Settings dan benarkan location permission.',
+          isError: true,
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      _latitudeController.text = position.latitude.toStringAsFixed(6);
+      _longitudeController.text = position.longitude.toStringAsFixed(6);
+
+      _showStatus(
+        'Lokasi semasa berjaya diambil.',
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showStatus(
+        'Gagal mendapatkan lokasi semasa. Sila cuba lagi atau isi koordinat secara manual.',
+        isError: true,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGettingLocation = false;
+        });
+      }
+    }
+  }
   double? _parseOptionalCoordinate(String value) {
     if (value.trim().isEmpty) {
       return null;
@@ -271,6 +350,27 @@ class _AddReportScreenState extends State<AddReportScreen> {
               const Text(
                 'Optional: Jika kosong, app guna koordinat sementara Kuala Selangor.',
                 style: AppTextStyles.helper,
+              ),
+              const SizedBox(height: AppSpacing.m),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _isSubmitting || _isGettingLocation
+                      ? null
+                      : _useCurrentLocation,
+                  icon: _isGettingLocation
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.my_location_rounded),
+                  label: Text(
+                    _isGettingLocation
+                        ? 'Sedang Ambil Lokasi...'
+                        : 'Gunakan Lokasi Semasa',
+                  ),
+                ),
               ),
               const SizedBox(height: AppSpacing.xl),
               const _FormSectionTitle(number: '2', title: 'Jenis & Harga'),
@@ -683,5 +783,6 @@ class _StatusBox extends StatelessWidget {
     );
   }
 }
+
 
 
