@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/auth_service.dart';
 import '../../../core/services/report_service.dart';
 
 class AdminReviewScreen extends StatefulWidget {
@@ -13,6 +14,13 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
   late Future<List<DurianReportSummary>> _pendingReportsFuture;
   String? _busyReportId;
 
+  static const String _adminEmail = 'intankeristina@gmail.com';
+
+  bool get _isAdmin {
+    final email = AuthService.currentUser?.email?.trim().toLowerCase() ?? '';
+    return email == _adminEmail;
+  }
+
   static const Color _cream = Color(0xFFFFFAEC);
   static const Color _green = Color(0xFF2F6B3F);
   static const Color _darkGreen = Color(0xFF17412A);
@@ -20,7 +28,11 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPendingReports();
+    if (_isAdmin) {
+      _loadPendingReports();
+    } else {
+      _pendingReportsFuture = Future.value(const <DurianReportSummary>[]);
+    }
   }
 
   void _loadPendingReports() {
@@ -28,6 +40,10 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
   }
 
   Future<void> _refresh() async {
+    if (!_isAdmin) {
+      return;
+    }
+
     setState(_loadPendingReports);
     await _pendingReportsFuture;
   }
@@ -67,9 +83,9 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(successMessage)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(successMessage)));
 
       setState(_loadPendingReports);
     } catch (error) {
@@ -94,6 +110,33 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isAdmin) {
+      return Scaffold(
+        backgroundColor: _cream,
+        appBar: AppBar(
+          backgroundColor: _cream,
+          elevation: 0,
+          foregroundColor: _darkGreen,
+          title: const Text(
+            'Admin Review',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
+        body: SafeArea(
+          child: _MessageView(
+            icon: Icons.admin_panel_settings_rounded,
+            title: 'Akses admin sahaja',
+            message:
+                'Halaman ini hanya boleh digunakan oleh admin Durian Radar.',
+            buttonLabel: 'Kembali',
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: _cream,
       appBar: AppBar(
@@ -102,9 +145,7 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
         foregroundColor: _darkGreen,
         title: const Text(
           'Admin Review',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: [
           IconButton(
@@ -151,7 +192,8 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
                 itemCount: reports.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 14),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 14),
                 itemBuilder: (context, index) {
                   final report = reports[index];
 
@@ -201,9 +243,7 @@ class _PendingReportCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8DEC3),
-        ),
+        border: Border.all(color: const Color(0xFFE8DEC3)),
         boxShadow: const [
           BoxShadow(
             color: Color.fromRGBO(47, 107, 63, 0.08),
@@ -271,14 +311,8 @@ class _PendingReportCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _InfoChip(
-                icon: Icons.eco_rounded,
-                label: report.variety,
-              ),
-              _InfoChip(
-                icon: Icons.payments_rounded,
-                label: report.price,
-              ),
+              _InfoChip(icon: Icons.eco_rounded, label: report.variety),
+              _InfoChip(icon: Icons.payments_rounded, label: report.price),
               _InfoChip(
                 icon: Icons.inventory_2_rounded,
                 label: report.statusText,
@@ -289,10 +323,7 @@ class _PendingReportCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               report.note,
-              style: const TextStyle(
-                color: _textMuted,
-                height: 1.3,
-              ),
+              style: const TextStyle(color: _textMuted, height: 1.3),
             ),
           ],
           const SizedBox(height: 16),
@@ -353,9 +384,7 @@ class _PendingReportCard extends StatelessWidget {
 }
 
 class _MarkerBadge extends StatelessWidget {
-  const _MarkerBadge({
-    required this.label,
-  });
+  const _MarkerBadge({required this.label});
 
   final String label;
 
@@ -370,18 +399,12 @@ class _MarkerBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: _softGreen,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: _green,
-          width: 1.3,
-        ),
+        border: Border.all(color: _green, width: 1.3),
       ),
       child: Center(
         child: Text(
           label,
-          style: const TextStyle(
-            color: _green,
-            fontWeight: FontWeight.w900,
-          ),
+          style: const TextStyle(color: _green, fontWeight: FontWeight.w900),
         ),
       ),
     );
@@ -389,10 +412,7 @@ class _MarkerBadge extends StatelessWidget {
 }
 
 class _InfoChip extends StatelessWidget {
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-  });
+  const _InfoChip({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
@@ -403,10 +423,7 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: _softGreen,
         borderRadius: BorderRadius.circular(999),
@@ -459,9 +476,7 @@ class _MessageView extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(26),
-            border: Border.all(
-              color: const Color(0xFFE8DEC3),
-            ),
+            border: Border.all(color: const Color(0xFFE8DEC3)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -473,11 +488,7 @@ class _MessageView extends StatelessWidget {
                   color: _yellow,
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: Icon(
-                  icon,
-                  color: _darkGreen,
-                  size: 38,
-                ),
+                child: Icon(icon, color: _darkGreen, size: 38),
               ),
               const SizedBox(height: 16),
               Text(
@@ -493,10 +504,7 @@ class _MessageView extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF6F776F),
-                  height: 1.35,
-                ),
+                style: const TextStyle(color: Color(0xFF6F776F), height: 1.35),
               ),
               const SizedBox(height: 18),
               FilledButton.icon(
