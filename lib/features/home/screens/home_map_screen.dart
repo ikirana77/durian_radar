@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../auth/screens/login_register_screen.dart';
 import '../../fresh/screens/fresh_list_screen.dart';
-import '../../reports/screens/add_report_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../reports/screens/add_report_screen.dart';
 
 class HomeMapScreen extends StatelessWidget {
   const HomeMapScreen({super.key});
@@ -147,7 +146,7 @@ class _HomeTopPanel extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const LoginRegisterScreen(),
+                      builder: (context) => const ProfileScreen(),
                     ),
                   );
                 },
@@ -174,45 +173,67 @@ class _HomeTopPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const gap = 12.0;
-              final availableWidth = constraints.maxWidth - (gap * 2);
-
-              return Row(
-                children: [
-                  SizedBox(
-                    width: availableWidth * 0.30,
-                    child: const _QuickChip(
-                      label: 'Fresh',
-                      icon: Icons.eco_rounded,
-                      iconColor: _DRColors.freshGreen,
-                    ),
-                  ),
-                  const SizedBox(width: gap),
-                  SizedBox(
-                    width: availableWidth * 0.40,
-                    child: const _QuickChip(
-                      label: 'Masih Ada',
-                      icon: Icons.calendar_month_rounded,
-                      iconColor: _DRColors.warningYellow,
-                    ),
-                  ),
-                  const SizedBox(width: gap),
-                  SizedBox(
-                    width: availableWidth * 0.30,
-                    child: const _QuickChip(
-                      label: 'Murah',
-                      icon: Icons.sell_rounded,
-                      iconColor: _DRColors.warningYellow,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+          const _QuickChipRow(),
         ],
       ),
+    );
+  }
+}
+
+class _QuickChipRow extends StatelessWidget {
+  const _QuickChipRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 12.0;
+        final maxWidth = constraints.maxWidth;
+
+        if (maxWidth <= 0) {
+          return const SizedBox.shrink();
+        }
+
+        final availableWidth = (maxWidth - (gap * 2)).clamp(
+          0.0,
+          double.infinity,
+        );
+
+        final freshWidth = availableWidth * 0.30;
+        final stockWidth = availableWidth * 0.40;
+        final cheapWidth = availableWidth * 0.30;
+
+        return Row(
+          children: [
+            SizedBox(
+              width: freshWidth,
+              child: const _QuickChip(
+                label: 'Fresh',
+                icon: Icons.eco_rounded,
+                iconColor: _DRColors.freshGreen,
+              ),
+            ),
+            const SizedBox(width: gap),
+            SizedBox(
+              width: stockWidth,
+              child: const _QuickChip(
+                label: 'Masih Ada',
+                icon: Icons.calendar_month_rounded,
+                iconColor: _DRColors.warningYellow,
+              ),
+            ),
+            const SizedBox(width: gap),
+            SizedBox(
+              width: cheapWidth,
+              child: const _QuickChip(
+                label: 'Murah',
+                icon: Icons.sell_rounded,
+                iconColor: _DRColors.warningYellow,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
