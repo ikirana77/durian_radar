@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/report_service.dart';
@@ -234,6 +235,78 @@ class _PendingReportCard extends StatelessWidget {
   static const Color _yellow = Color(0xFFFFC857);
   static const Color _textMuted = Color(0xFF6F776F);
 
+  bool get _hasCoordinates {
+    return report.latitude != 0 && report.longitude != 0;
+  }
+
+  bool get _hasSellerPhone {
+    return report.sellerPhone.trim().isNotEmpty;
+  }
+
+  Future<void> _openAdminNavigation(BuildContext context) async {
+    if (!_hasCoordinates) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Koordinat laporan belum tersedia.')),
+      );
+      return;
+    }
+
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=${report.latitude},${report.longitude}',
+    );
+
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak dapat membuka Google Maps.')),
+      );
+    }
+  }
+
+  Future<void> _openAdminWhatsApp(BuildContext context) async {
+    final normalizedPhone = _normalizeMalaysianPhone(report.sellerPhone);
+
+    if (normalizedPhone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nombor WhatsApp penjual belum tersedia.'),
+        ),
+      );
+      return;
+    }
+
+    final message = Uri.encodeComponent(
+      'Hai, saya admin Durian Radar. Saya ingin semak laporan durian yang dihantar melalui aplikasi.',
+    );
+
+    final uri = Uri.parse('https://wa.me/$normalizedPhone?text=$message');
+
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak dapat membuka WhatsApp.')),
+      );
+    }
+  }
+
+  String _normalizeMalaysianPhone(String value) {
+    var digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (digits.isEmpty) {
+      return '';
+    }
+
+    if (digits.startsWith('0')) {
+      digits = '6$digits';
+    } else if (digits.startsWith('1')) {
+      digits = '60$digits';
+    }
+
+    return digits;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isBusy = isApproving || isRejecting;
@@ -319,6 +392,84 @@ class _PendingReportCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFAEC),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFE8DEC3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Semakan admin',
+                  style: TextStyle(
+                    color: _darkGreen,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _AdminDetailLine(
+                  icon: Icons.phone_rounded,
+                  label: 'WhatsApp',
+                  value: _hasSellerPhone
+                      ? report.sellerPhone.trim()
+                      : 'Tiada nombor',
+                ),
+                const SizedBox(height: 8),
+                _AdminDetailLine(
+                  icon: Icons.location_on_rounded,
+                  label: 'Koordinat',
+                  value: _hasCoordinates
+                      ? '${report.latitude.toStringAsFixed(5)}, ${report.longitude.toStringAsFixed(5)}'
+                      : 'Tiada koordinat',
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: isBusy || !_hasCoordinates
+                            ? null
+                            : () => _openAdminNavigation(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _green,
+                          side: const BorderSide(color: _green),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                        ),
+                        icon: const Icon(Icons.map_rounded),
+                        label: const Text(
+                          'Semak Map',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: isBusy || !_hasSellerPhone
+                            ? null
+                            : () => _openAdminWhatsApp(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _darkGreen,
+                          side: const BorderSide(color: _yellow),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                        ),
+                        icon: const Icon(Icons.chat_rounded),
+                        label: const Text(
+                          'WhatsApp',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
           if (report.note.trim().isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
@@ -379,6 +530,50 @@ class _PendingReportCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AdminDetailLine extends StatelessWidget {
+  const _AdminDetailLine({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  static const Color _green = Color(0xFF2F6B3F);
+  static const Color _darkGreen = Color(0xFF17412A);
+  static const Color _textMuted = Color(0xFF6F776F);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: _green, size: 18),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: const TextStyle(
+            color: _darkGreen,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _textMuted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
