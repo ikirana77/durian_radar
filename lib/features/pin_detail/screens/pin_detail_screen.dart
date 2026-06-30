@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/services/report_service.dart';
 
@@ -376,6 +377,52 @@ class _ActionPanel extends StatelessWidget {
 
   static const Color _green = Color(0xFF2F6B3F);
   static const Color _darkGreen = Color(0xFF17412A);
+  static const Color _textMuted = Color(0xFF6F776F);
+
+  Future<void> _openNavigation(BuildContext context) async {
+    final latitude = report.latitude;
+    final longitude = report.longitude;
+
+    if (latitude == 0 || longitude == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Koordinat lokasi belum tersedia untuk laporan ini.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
+    );
+
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Tidak dapat membuka Google Maps.',
+          ),
+        ),
+      );
+    }
+  }
+
+  void _showContactComingSoon(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Fungsi WhatsApp/telefon penjual akan dibuat dalam checkpoint seterusnya.',
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -396,15 +443,7 @@ class _ActionPanel extends StatelessWidget {
             children: [
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Fungsi navigasi GPS akan disambungkan dalam checkpoint seterusnya.',
-                        ),
-                      ),
-                    );
-                  },
+                  onPressed: () => _openNavigation(context),
                   style: FilledButton.styleFrom(
                     backgroundColor: _green,
                     foregroundColor: Colors.white,
@@ -420,17 +459,9 @@ class _ActionPanel extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Fungsi WhatsApp/telefon penjual akan disambungkan kemudian.',
-                        ),
-                      ),
-                    );
-                  },
+                  onPressed: () => _showContactComingSoon(context),
                   style: FilledButton.styleFrom(
-                    backgroundColor: Color(0xFFFFC857),
+                    backgroundColor: const Color(0xFFFFC857),
                     foregroundColor: _darkGreen,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -444,10 +475,10 @@ class _ActionPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            'Nota: lokasi GPS sebenar dan nombor penjual akan ditambah dalam checkpoint akan datang.',
-            style: const TextStyle(
-              color: Color(0xFF6F776F),
+          const Text(
+            'Navigasi menggunakan koordinat laporan daripada Supabase. Untuk checkpoint ini, laporan test masih menggunakan koordinat sementara.',
+            style: TextStyle(
+              color: _textMuted,
               height: 1.3,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -781,4 +812,5 @@ class _DetailMapPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
 
