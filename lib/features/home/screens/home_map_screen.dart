@@ -1,11 +1,48 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/report_service.dart';
+
 import '../../fresh/screens/fresh_list_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../reports/screens/add_report_screen.dart';
 
-class HomeMapScreen extends StatelessWidget {
+class HomeMapScreen extends StatefulWidget {
   const HomeMapScreen({super.key});
+
+  @override
+  State<HomeMapScreen> createState() => _HomeMapScreenState();
+}
+
+class _HomeMapScreenState extends State<HomeMapScreen> {
+  late Future<List<DurianReportSummary>> _reportsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReports();
+  }
+
+  void _loadReports() {
+    _reportsFuture = ReportService.fetchLatestReports(
+      approvedOnly: false,
+      limit: 30,
+    );
+  }
+
+  Future<void> _openAddReportScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AddReportScreen(),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(_loadReports);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,10 +61,23 @@ class HomeMapScreen extends StatelessWidget {
 
           const Positioned(right: 22, bottom: 150, child: _LocateButton()),
 
-          const Positioned(
+          Positioned(
             left: 28,
             bottom: 46,
-            child: SizedBox(width: 270, child: _FloatingSummaryCard()),
+            child: SizedBox(
+              width: 270,
+              child: FutureBuilder<List<DurianReportSummary>>(
+                future: _reportsFuture,
+                builder: (context, snapshot) {
+                  return _FloatingSummaryCard(
+                    reports: snapshot.data ?? const [],
+                    isLoading: snapshot.connectionState ==
+                        ConnectionState.waiting,
+                    hasError: snapshot.hasError,
+                  );
+                },
+              ),
+            ),
           ),
 
           Positioned(
@@ -35,12 +85,7 @@ class HomeMapScreen extends StatelessWidget {
             bottom: 42,
             child: _ReportFab(
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddReportScreen(),
-                  ),
-                );
+                _openAddReportScreen();
               },
             ),
           ),
@@ -463,10 +508,45 @@ class _LocateButton extends StatelessWidget {
 }
 
 class _FloatingSummaryCard extends StatelessWidget {
-  const _FloatingSummaryCard();
+  const _FloatingSummaryCard({
+    required this.reports,
+    required this.isLoading,
+    required this.hasError,
+  });
+
+  final List<DurianReportSummary> reports;
+  final bool isLoading;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
+    final totalReports = reports.length;
+    final latestUpdate = reports.isEmpty ? null : reports.first.updatedTime;
+
+    final title = isLoading
+        ? 'Memuatkan laporan...'
+        : hasError
+            ? 'Laporan belum dimuat'
+            : totalReports == 0
+                ? 'Belum ada lokasi fresh'
+                : '$totalReports lokasi dari Supabase';
+
+    final subtitle = isLoading
+        ? 'Sedang sambung ke database'
+        : hasError
+            ? 'Buka Fresh List untuk cuba semula'
+            : totalReports == 0
+                ? 'Tekan + untuk laporan pertama'
+                : 'Data live daripada Fresh List';
+
+    final updateText = isLoading
+        ? 'Menyemak data terkini...'
+        : hasError
+            ? 'Ada isu sambungan data'
+            : latestUpdate == null
+                ? 'Menunggu laporan komuniti'
+                : 'Update terbaru: $latestUpdate';
+
     return Container(
       constraints: const BoxConstraints(minHeight: 84),
       padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
@@ -496,46 +576,48 @@ class _FloatingSummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '12 lokasi fresh hari ini',
+                  title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: _DRColors.durianGreen,
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                SizedBox(height: 5),
+                const SizedBox(height: 5),
                 Text(
-                  'Harga serendah RM15/kg',
+                  subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: _DRColors.textDark,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(height: 7),
+                const SizedBox(height: 7),
                 Row(
                   children: [
                     CircleAvatar(
                       radius: 4,
-                      backgroundColor: _DRColors.freshGreen,
+                      backgroundColor: hasError
+                          ? _DRColors.soldOutRed
+                          : _DRColors.freshGreen,
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Update terbaru: 8 min lepas',
+                        updateText,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: _DRColors.textMuted,
                           fontSize: 10.5,
                           fontWeight: FontWeight.w500,
