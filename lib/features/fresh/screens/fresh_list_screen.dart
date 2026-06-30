@@ -27,7 +27,7 @@ class _FreshListScreenState extends State<FreshListScreen> {
 
   void _loadReports() {
     _reportsFuture = ReportService.fetchLatestReports(
-      approvedOnly: false,
+      approvedOnly: true,
       limit: 30,
     );
   }

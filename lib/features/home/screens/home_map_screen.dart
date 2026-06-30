@@ -25,7 +25,7 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
 
   void _loadReports() {
     _reportsFuture = ReportService.fetchLatestReports(
-      approvedOnly: false,
+      approvedOnly: true,
       limit: 30,
     );
   }
