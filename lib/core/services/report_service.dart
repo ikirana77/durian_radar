@@ -256,6 +256,67 @@ class ReportService {
         ? cleanVariety.toUpperCase()
         : cleanVariety.substring(0, 3).toUpperCase();
   }
+  static Future<List<DurianReportSummary>> fetchPendingReports({
+    int limit = 50,
+  }) async {
+    final response = await _client
+        .from('durian_reports')
+        .select('''
+          id,
+          marker_label,
+          stall_name,
+          area,
+          variety,
+          price,
+          price_per_kg,
+          stock_status,
+          status_text,
+          updated_time,
+          note,
+          latitude,
+          longitude,
+          is_approved,
+          reported_at,
+          status
+        ''')
+        .eq('status', 'pending')
+        .order('reported_at', ascending: false)
+        .limit(limit);
+
+    return (response as List<dynamic>)
+        .map((item) => DurianReportSummary.fromMap(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<void> approveReport(String reportId) async {
+    final trimmedId = reportId.trim();
+
+    if (trimmedId.isEmpty) {
+      throw const AuthException('ID laporan tidak sah.');
+    }
+
+    await _client.from('durian_reports').update({
+      'is_approved': true,
+      'status': 'approved',
+      'status_text': 'Disahkan',
+      'updated_time': 'Baru disahkan',
+    }).eq('id', trimmedId);
+  }
+
+  static Future<void> rejectReport(String reportId) async {
+    final trimmedId = reportId.trim();
+
+    if (trimmedId.isEmpty) {
+      throw const AuthException('ID laporan tidak sah.');
+    }
+
+    await _client.from('durian_reports').update({
+      'is_approved': false,
+      'status': 'rejected',
+      'status_text': 'Ditolak',
+      'updated_time': 'Baru ditolak',
+    }).eq('id', trimmedId);
+  }
 
   static String getReadableError(Object error) {
     if (error is AuthException) {

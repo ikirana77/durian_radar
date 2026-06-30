@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/report_service.dart';
 
+import '../../admin/screens/admin_review_screen.dart';
 import '../../fresh/screens/fresh_list_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../reports/screens/add_report_screen.dart';
@@ -194,7 +195,17 @@ class _HomeTopPanel extends StatelessWidget {
                   ),
                 ),
               ),
-              _IconCircle(icon: Icons.search_rounded, onTap: () {}),
+              _IconCircle(
+                icon: Icons.admin_panel_settings_rounded,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminReviewScreen(),
+                    ),
+                  );
+                },
+              ),
               const SizedBox(width: 12),
               _IconCircle(
                 icon: Icons.person_outline_rounded,
@@ -1216,4 +1227,5 @@ class _SoftMapPainter extends CustomPainter {
     return false;
   }
 }
+
 
