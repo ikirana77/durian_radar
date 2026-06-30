@@ -21,6 +21,9 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
   bool _isPasswordVisible = false;
   bool _isLoading = false;
 
+  String? _statusMessage;
+  bool _isStatusError = false;
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -32,32 +35,63 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
+    debugPrint('AUTH DEBUG: Button pressed.');
+    debugPrint('AUTH DEBUG: Mode = ${_isRegisterMode ? "register" : "login"}');
+    debugPrint('AUTH DEBUG: Email = $email');
+
     if (email.isEmpty || password.isEmpty) {
-      _showMessage('Sila masukkan email dan kata laluan.');
+      _showStatus('Sila masukkan email dan kata laluan.', isError: true);
       return;
     }
 
     if (!email.contains('@')) {
-      _showMessage('Sila masukkan email yang sah.');
+      _showStatus('Sila masukkan email yang sah.', isError: true);
       return;
     }
 
     if (_isRegisterMode && password.length < 6) {
-      _showMessage('Kata laluan mesti sekurang-kurangnya 6 aksara.');
+      _showStatus(
+        'Kata laluan mesti sekurang-kurangnya 6 aksara.',
+        isError: true,
+      );
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _statusMessage = _isRegisterMode
+          ? 'Sedang mendaftar akaun...'
+          : 'Sedang log masuk...';
+      _isStatusError = false;
     });
 
     try {
       if (_isRegisterMode) {
-        await AuthService.signUpWithEmail(email: email, password: password);
+        final response = await AuthService.signUpWithEmail(
+          email: email,
+          password: password,
+        );
+
+        debugPrint('AUTH DEBUG: Register response user = ${response.user?.id}');
+        debugPrint(
+          'AUTH DEBUG: Register response session = ${response.session != null}',
+        );
 
         if (!mounted) return;
 
-        _showMessage(
+        if (response.session != null) {
+          _showStatus(
+            'Akaun berjaya didaftarkan dan anda telah log masuk.',
+          );
+
+          await Future<void>.delayed(const Duration(milliseconds: 900));
+
+          if (!mounted) return;
+          Navigator.pop(context, true);
+          return;
+        }
+
+        _showStatus(
           'Akaun berjaya didaftarkan. Sila semak email jika pengesahan diperlukan.',
         );
 
@@ -65,17 +99,42 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
           _isRegisterMode = false;
         });
       } else {
-        await AuthService.signInWithEmail(email: email, password: password);
+        final response = await AuthService.signInWithEmail(
+          email: email,
+          password: password,
+        );
+
+        debugPrint('AUTH DEBUG: Login response user = ${response.user?.id}');
+        debugPrint(
+          'AUTH DEBUG: Login response session = ${response.session != null}',
+        );
 
         if (!mounted) return;
 
-        _showMessage('Log masuk berjaya.');
+        if (response.session == null) {
+          _showStatus(
+            'Login belum lengkap. Sila semak pengesahan email.',
+            isError: true,
+          );
+          return;
+        }
 
-        Navigator.pop(context);
+        _showStatus('Log masuk berjaya.');
+
+        await Future<void>.delayed(const Duration(milliseconds: 900));
+
+        if (!mounted) return;
+        Navigator.pop(context, true);
       }
     } catch (error) {
+      debugPrint('AUTH DEBUG ERROR: $error');
+
       if (!mounted) return;
-      _showMessage(AuthService.getReadableError(error));
+
+      _showStatus(
+        AuthService.getReadableError(error),
+        isError: true,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -85,10 +144,17 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
     }
   }
 
-  void _showMessage(String message) {
+  void _showStatus(String message, {bool isError = false}) {
+    setState(() {
+      _statusMessage = message;
+      _isStatusError = isError;
+    });
+
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(
+        SnackBar(content: Text(message)),
+      );
   }
 
   void _toggleAuthMode(bool registerMode) {
@@ -96,6 +162,8 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
 
     setState(() {
       _isRegisterMode = registerMode;
+      _statusMessage = null;
+      _isStatusError = false;
     });
   }
 
@@ -114,7 +182,7 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
                   onPressed: _isLoading
                       ? null
                       : () {
-                          Navigator.pop(context);
+                          Navigator.pop(context, false);
                         },
                   icon: const Icon(Icons.arrow_back),
                   color: AppColors.durianGreen,
@@ -131,6 +199,8 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
                 isRegisterMode: _isRegisterMode,
                 isPasswordVisible: _isPasswordVisible,
                 isLoading: _isLoading,
+                statusMessage: _statusMessage,
+                isStatusError: _isStatusError,
                 onToggleMode: _toggleAuthMode,
                 onTogglePasswordVisibility: () {
                   setState(() {
@@ -141,7 +211,7 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
                 onGuestContinue: _isLoading
                     ? null
                     : () {
-                        Navigator.pop(context);
+                        Navigator.pop(context, false);
                       },
               ),
               const SizedBox(height: AppSpacing.l),
@@ -245,7 +315,10 @@ class _HeroIllustration extends StatelessWidget {
 }
 
 class _PersonBubble extends StatelessWidget {
-  const _PersonBubble({required this.icon, required this.label});
+  const _PersonBubble({
+    required this.icon,
+    required this.label,
+  });
 
   final IconData icon;
   final String label;
@@ -279,6 +352,8 @@ class _AuthCard extends StatelessWidget {
     required this.isRegisterMode,
     required this.isPasswordVisible,
     required this.isLoading,
+    required this.statusMessage,
+    required this.isStatusError,
     required this.onToggleMode,
     required this.onTogglePasswordVisibility,
     required this.onSubmit,
@@ -290,6 +365,8 @@ class _AuthCard extends StatelessWidget {
   final bool isRegisterMode;
   final bool isPasswordVisible;
   final bool isLoading;
+  final String? statusMessage;
+  final bool isStatusError;
   final ValueChanged<bool> onToggleMode;
   final VoidCallback onTogglePasswordVisibility;
   final VoidCallback onSubmit;
@@ -347,6 +424,13 @@ class _AuthCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.s),
+          if (statusMessage != null) ...[
+            _StatusBox(
+              message: statusMessage!,
+              isError: isStatusError,
+            ),
+            const SizedBox(height: AppSpacing.s),
+          ],
           if (!isRegisterMode)
             Align(
               alignment: Alignment.centerRight,
@@ -415,6 +499,54 @@ class _AuthCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusBox extends StatelessWidget {
+  const _StatusBox({
+    required this.message,
+    required this.isError,
+  });
+
+  final String message;
+  final bool isError;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isError ? Colors.red : AppColors.durianGreen;
+    final backgroundColor = isError
+        ? Colors.red.withValues(alpha: 0.08)
+        : AppColors.paleGreen;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.m),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(AppRadius.button),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isError ? Icons.error_outline : Icons.check_circle_outline,
+            color: color,
+            size: 20,
+          ),
+          const SizedBox(width: AppSpacing.s),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTextStyles.helper.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),

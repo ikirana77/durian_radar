@@ -9,6 +9,8 @@ class AuthService {
 
   static User? get currentUser => _client.auth.currentUser;
 
+  static Session? get currentSession => _client.auth.currentSession;
+
   static bool get isLoggedIn => currentUser != null;
 
   static Stream<AuthState> get authStateChanges {
@@ -21,7 +23,7 @@ class AuthService {
   }) async {
     final normalizedEmail = email.trim().toLowerCase();
 
-    if (normalizedEmail.isEmpty || password.isEmpty) {
+    if (normalizedEmail.isEmpty || password.trim().isEmpty) {
       throw const AuthException('Email dan kata laluan diperlukan.');
     }
 
@@ -37,17 +39,22 @@ class AuthService {
   }) async {
     final normalizedEmail = email.trim().toLowerCase();
 
-    if (normalizedEmail.isEmpty || password.isEmpty) {
+    if (normalizedEmail.isEmpty || password.trim().isEmpty) {
       throw const AuthException('Email dan kata laluan diperlukan.');
     }
 
-    if (password.length < 6) {
-      throw const AuthException(
-        'Kata laluan mesti sekurang-kurangnya 6 aksara.',
-      );
+    if (!normalizedEmail.contains('@')) {
+      throw const AuthException('Sila masukkan email yang sah.');
     }
 
-    return _client.auth.signUp(email: normalizedEmail, password: password);
+    if (password.length < 6) {
+      throw const AuthException('Kata laluan mesti sekurang-kurangnya 6 aksara.');
+    }
+
+    return _client.auth.signUp(
+      email: normalizedEmail,
+      password: password,
+    );
   }
 
   static Future<void> signOut() async {
@@ -56,7 +63,21 @@ class AuthService {
 
   static String getReadableError(Object error) {
     if (error is AuthException) {
-      return error.message;
+      final message = error.message;
+
+      if (message.toLowerCase().contains('invalid login credentials')) {
+        return 'Email atau kata laluan tidak betul.';
+      }
+
+      if (message.toLowerCase().contains('email not confirmed')) {
+        return 'Email belum disahkan. Sila semak inbox email anda.';
+      }
+
+      if (message.toLowerCase().contains('user already registered')) {
+        return 'Email ini sudah pernah didaftarkan. Sila log masuk.';
+      }
+
+      return message;
     }
 
     if (error is PostgrestException) {
