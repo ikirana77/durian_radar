@@ -8,6 +8,7 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../auth/screens/login_register_screen.dart';
+import 'location_picker_screen.dart';
 
 class AddReportScreen extends StatefulWidget {
   const AddReportScreen({super.key});
@@ -164,6 +165,31 @@ class _AddReportScreenState extends State<AddReportScreen> {
     );
   }
 
+  Future<void> _pickLocationOnMap() async {
+    final startLatitude =
+        _parseOptionalCoordinate(_latitudeController.text) ?? 3.3400;
+    final startLongitude =
+        _parseOptionalCoordinate(_longitudeController.text) ?? 101.2500;
+
+    final result = await Navigator.push<LocationPickerResult>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPickerScreen(
+          initialLatitude: startLatitude,
+          initialLongitude: startLongitude,
+        ),
+      ),
+    );
+
+    if (!mounted || result == null) {
+      return;
+    }
+
+    _latitudeController.text = result.latitude.toStringAsFixed(6);
+    _longitudeController.text = result.longitude.toStringAsFixed(6);
+
+    _showStatus('Lokasi peta berjaya dipilih.');
+  }
   Future<void> _useCurrentLocation() async {
     if (_isGettingLocation) {
       return;
@@ -370,6 +396,15 @@ class _AddReportScreenState extends State<AddReportScreen> {
                         ? 'Sedang Ambil Lokasi...'
                         : 'Gunakan Lokasi Semasa',
                   ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _isSubmitting ? null : _pickLocationOnMap,
+                  icon: const Icon(Icons.map_rounded),
+                  label: const Text('Pilih Lokasi Atas Peta'),
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -783,6 +818,7 @@ class _StatusBox extends StatelessWidget {
     );
   }
 }
+
 
 
 
