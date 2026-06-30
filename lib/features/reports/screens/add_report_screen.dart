@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -159,33 +161,48 @@ class _AddReportScreenState extends State<AddReportScreen> {
   }
 
   Future<void> _pickLocationOnMap() async {
+    if (_isSubmitting || _isGettingLocation) {
+      return;
+    }
+
     final startLatitude =
         _parseOptionalCoordinate(_latitudeController.text) ?? 3.3400;
     final startLongitude =
         _parseOptionalCoordinate(_longitudeController.text) ?? 101.2500;
 
-    final result = await Navigator.push<LocationPickerResult>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LocationPickerScreen(
-          initialLatitude: startLatitude,
-          initialLongitude: startLongitude,
+    try {
+      final result = await Navigator.push<LocationPickerResult>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LocationPickerScreen(
+            initialLatitude: startLatitude,
+            initialLongitude: startLongitude,
+          ),
         ),
-      ),
-    );
+      );
 
-    if (!mounted || result == null) {
-      return;
+      if (!mounted || result == null) {
+        return;
+      }
+
+      _latitudeController.text = result.latitude.toStringAsFixed(6);
+      _longitudeController.text = result.longitude.toStringAsFixed(6);
+
+      _showStatus('Lokasi peta berjaya dipilih.');
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showStatus(
+        'Gagal membuka pilihan lokasi peta. Sila cuba lagi atau isi koordinat secara manual.',
+        isError: true,
+      );
     }
-
-    _latitudeController.text = result.latitude.toStringAsFixed(6);
-    _longitudeController.text = result.longitude.toStringAsFixed(6);
-
-    _showStatus('Lokasi peta berjaya dipilih.');
   }
 
   Future<void> _useCurrentLocation() async {
-    if (_isGettingLocation) {
+    if (_isGettingLocation || _isSubmitting) {
       return;
     }
 
@@ -198,6 +215,10 @@ class _AddReportScreenState extends State<AddReportScreen> {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
+      if (!mounted) {
+        return;
+      }
+
       if (!serviceEnabled) {
         _showStatus(
           'Location service belum diaktifkan. Sila aktifkan GPS/location pada device.',
@@ -208,8 +229,16 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
       var permission = await Geolocator.checkPermission();
 
+      if (!mounted) {
+        return;
+      }
+
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
+
+        if (!mounted) {
+          return;
+        }
       }
 
       if (permission == LocationPermission.denied) {
@@ -232,7 +261,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
         ),
-      );
+      ).timeout(const Duration(seconds: 15));
 
       if (!mounted) {
         return;
@@ -247,10 +276,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
         return;
       }
 
-      _showStatus(
-        'Gagal mendapatkan lokasi semasa. Sila cuba lagi atau isi koordinat secara manual.',
-        isError: true,
-      );
+      _showStatus(_getLocationErrorMessage(error), isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -258,6 +284,25 @@ class _AddReportScreenState extends State<AddReportScreen> {
         });
       }
     }
+  }
+
+  String _getLocationErrorMessage(Object error) {
+    final rawMessage = error.toString().toLowerCase();
+
+    if (error is TimeoutException || rawMessage.contains('timeout')) {
+      return 'GPS mengambil masa terlalu lama. Sila cuba lagi, pilih lokasi atas peta, atau isi koordinat manual.';
+    }
+
+    if (rawMessage.contains('permission')) {
+      return 'Aplikasi tidak mendapat kebenaran lokasi. Sila semak permission location dalam Settings.';
+    }
+
+    if (rawMessage.contains('location service') ||
+        rawMessage.contains('disabled')) {
+      return 'Location service belum aktif. Sila aktifkan GPS/location pada device.';
+    }
+
+    return 'Gagal mendapatkan lokasi semasa. Sila cuba lagi, pilih lokasi atas peta, atau isi koordinat secara manual.';
   }
 
   double? _parseOptionalCoordinate(String value) {
@@ -281,6 +326,10 @@ class _AddReportScreenState extends State<AddReportScreen> {
   }
 
   void _showStatus(String message, {bool isError = false}) {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _statusMessage = message;
       _isStatusError = isError;
@@ -562,7 +611,9 @@ class _LocationPickerCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: isSubmitting ? null : onPickLocationOnMap,
+              onPressed: isSubmitting || isGettingLocation
+                  ? null
+                  : onPickLocationOnMap,
               icon: const Icon(Icons.map_rounded),
               label: const Text('Pilih Lokasi Atas Peta'),
             ),
