@@ -50,6 +50,18 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
   }
 
   Future<void> _approveReport(DurianReportSummary report) async {
+    final confirmed = await _confirmReviewAction(
+      title: 'Luluskan laporan?',
+      message:
+          'Laporan "${report.stallName}" akan dipaparkan kepada pengguna awam.',
+      confirmLabel: 'Approve',
+      confirmColor: _green,
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
     await _reviewReport(
       report: report,
       actionLabel: 'approve',
@@ -59,11 +71,75 @@ class _AdminReviewScreenState extends State<AdminReviewScreen> {
   }
 
   Future<void> _rejectReport(DurianReportSummary report) async {
+    final confirmed = await _confirmReviewAction(
+      title: 'Tolak laporan?',
+      message:
+          'Laporan "${report.stallName}" akan ditolak dan tidak dipaparkan kepada pengguna awam.',
+      confirmLabel: 'Reject',
+      confirmColor: Colors.red,
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
     await _reviewReport(
       report: report,
       actionLabel: 'reject',
       action: () => ReportService.rejectReport(report.id),
       successMessage: 'Laporan ditolak.',
+    );
+  }
+
+  Future<bool?> _confirmReviewAction({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required Color confirmColor,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: Text(
+            title,
+            style: const TextStyle(
+              color: _darkGreen,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(
+              color: Color(0xFF6F776F),
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false);
+              },
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: confirmColor,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(
+                confirmLabel,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
