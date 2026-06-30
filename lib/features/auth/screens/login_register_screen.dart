@@ -1,12 +1,103 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/auth_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 
-class LoginRegisterScreen extends StatelessWidget {
+class LoginRegisterScreen extends StatefulWidget {
   const LoginRegisterScreen({super.key});
+
+  @override
+  State<LoginRegisterScreen> createState() => _LoginRegisterScreenState();
+}
+
+class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isRegisterMode = false;
+  bool _isPasswordVisible = false;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitAuth() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      _showMessage('Sila masukkan email dan kata laluan.');
+      return;
+    }
+
+    if (!email.contains('@')) {
+      _showMessage('Sila masukkan email yang sah.');
+      return;
+    }
+
+    if (_isRegisterMode && password.length < 6) {
+      _showMessage('Kata laluan mesti sekurang-kurangnya 6 aksara.');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (_isRegisterMode) {
+        await AuthService.signUpWithEmail(email: email, password: password);
+
+        if (!mounted) return;
+
+        _showMessage(
+          'Akaun berjaya didaftarkan. Sila semak email jika pengesahan diperlukan.',
+        );
+
+        setState(() {
+          _isRegisterMode = false;
+        });
+      } else {
+        await AuthService.signInWithEmail(email: email, password: password);
+
+        if (!mounted) return;
+
+        _showMessage('Log masuk berjaya.');
+
+        Navigator.pop(context);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage(AuthService.getReadableError(error));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _toggleAuthMode(bool registerMode) {
+    if (_isLoading) return;
+
+    setState(() {
+      _isRegisterMode = registerMode;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,9 +111,11 @@ class LoginRegisterScreen extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: IconButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          Navigator.pop(context);
+                        },
                   icon: const Icon(Icons.arrow_back),
                   color: AppColors.durianGreen,
                 ),
@@ -32,7 +125,25 @@ class LoginRegisterScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.l),
               const _HeroIllustration(),
               const SizedBox(height: AppSpacing.l),
-              const _AuthCard(),
+              _AuthCard(
+                emailController: _emailController,
+                passwordController: _passwordController,
+                isRegisterMode: _isRegisterMode,
+                isPasswordVisible: _isPasswordVisible,
+                isLoading: _isLoading,
+                onToggleMode: _toggleAuthMode,
+                onTogglePasswordVisibility: () {
+                  setState(() {
+                    _isPasswordVisible = !_isPasswordVisible;
+                  });
+                },
+                onSubmit: _submitAuth,
+                onGuestContinue: _isLoading
+                    ? null
+                    : () {
+                        Navigator.pop(context);
+                      },
+              ),
               const SizedBox(height: AppSpacing.l),
               const _PrivacyNote(),
             ],
@@ -162,10 +273,32 @@ class _PersonBubble extends StatelessWidget {
 }
 
 class _AuthCard extends StatelessWidget {
-  const _AuthCard();
+  const _AuthCard({
+    required this.emailController,
+    required this.passwordController,
+    required this.isRegisterMode,
+    required this.isPasswordVisible,
+    required this.isLoading,
+    required this.onToggleMode,
+    required this.onTogglePasswordVisibility,
+    required this.onSubmit,
+    required this.onGuestContinue,
+  });
+
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final bool isRegisterMode;
+  final bool isPasswordVisible;
+  final bool isLoading;
+  final ValueChanged<bool> onToggleMode;
+  final VoidCallback onTogglePasswordVisibility;
+  final VoidCallback onSubmit;
+  final VoidCallback? onGuestContinue;
 
   @override
   Widget build(BuildContext context) {
+    final buttonText = isRegisterMode ? 'Daftar Akaun' : 'Log Masuk';
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.l),
       decoration: BoxDecoration(
@@ -182,43 +315,70 @@ class _AuthCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const _SegmentTabs(),
+          _SegmentTabs(
+            isRegisterMode: isRegisterMode,
+            onToggleMode: onToggleMode,
+          ),
           const SizedBox(height: AppSpacing.l),
-          const _AuthTextField(
+          _AuthTextField(
+            controller: emailController,
             label: 'Email',
-            hint: 'Email',
+            hint: 'nama@email.com',
             icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            enabled: !isLoading,
           ),
           const SizedBox(height: AppSpacing.m),
-          const _AuthTextField(
+          _AuthTextField(
+            controller: passwordController,
             label: 'Kata Laluan',
-            hint: 'Kata Laluan',
+            hint: 'Minimum 6 aksara',
             icon: Icons.lock_outline,
-            obscureText: true,
-            suffixIcon: Icons.visibility_outlined,
-          ),
-          const SizedBox(height: AppSpacing.s),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {},
-              child: const Text('Lupa kata laluan?'),
+            obscureText: !isPasswordVisible,
+            enabled: !isLoading,
+            suffixIcon: IconButton(
+              onPressed: isLoading ? null : onTogglePasswordVisibility,
+              icon: Icon(
+                isPasswordVisible
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: AppColors.durianGreen,
+              ),
             ),
           ),
+          const SizedBox(height: AppSpacing.s),
+          if (!isRegisterMode)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: isLoading
+                    ? null
+                    : () {
+                        ScaffoldMessenger.of(context)
+                          ..clearSnackBars()
+                          ..showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Fungsi reset kata laluan akan dibuat dalam checkpoint seterusnya.',
+                              ),
+                            ),
+                          );
+                      },
+                child: const Text('Lupa kata laluan?'),
+              ),
+            ),
           const SizedBox(height: AppSpacing.s),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Dummy sahaja. Login sebenar akan disambung ke Supabase Auth nanti.',
-                    ),
-                  ),
-                );
-              },
-              child: const Text('Log Masuk'),
+              onPressed: isLoading ? null : onSubmit,
+              child: isLoading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    )
+                  : Text(buttonText),
             ),
           ),
           const SizedBox(height: AppSpacing.m),
@@ -227,21 +387,27 @@ class _AuthCard extends StatelessWidget {
           const _DividerWithText(text: 'atau'),
           const SizedBox(height: AppSpacing.m),
           TextButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-            },
+            onPressed: onGuestContinue,
             icon: const Icon(Icons.person_outline),
             label: const Text('Teruskan sebagai tetamu'),
           ),
           const SizedBox(height: AppSpacing.s),
           Wrap(
             alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Text('Belum ada akaun? ', style: AppTextStyles.helper),
+              Text(
+                isRegisterMode ? 'Sudah ada akaun? ' : 'Belum ada akaun? ',
+                style: AppTextStyles.helper,
+              ),
               GestureDetector(
-                onTap: () {},
+                onTap: isLoading
+                    ? null
+                    : () {
+                        onToggleMode(!isRegisterMode);
+                      },
                 child: Text(
-                  'Daftar sekarang',
+                  isRegisterMode ? 'Log masuk' : 'Daftar sekarang',
                   style: AppTextStyles.helper.copyWith(
                     color: AppColors.durianGreen,
                     fontWeight: FontWeight.w700,
@@ -257,7 +423,13 @@ class _AuthCard extends StatelessWidget {
 }
 
 class _SegmentTabs extends StatelessWidget {
-  const _SegmentTabs();
+  const _SegmentTabs({
+    required this.isRegisterMode,
+    required this.onToggleMode,
+  });
+
+  final bool isRegisterMode;
+  final ValueChanged<bool> onToggleMode;
 
   @override
   Widget build(BuildContext context) {
@@ -271,31 +443,21 @@ class _SegmentTabs extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
-              decoration: BoxDecoration(
-                color: AppColors.softCardWhite,
-                borderRadius: BorderRadius.circular(AppRadius.button),
-                border: Border.all(color: AppColors.durianGreen),
-              ),
-              child: Text(
-                'Log Masuk',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.helper.copyWith(
-                  color: AppColors.durianGreen,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+            child: _SegmentTabButton(
+              text: 'Log Masuk',
+              isSelected: !isRegisterMode,
+              onTap: () {
+                onToggleMode(false);
+              },
             ),
           ),
-          const Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.s),
-              child: Text(
-                'Daftar',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.helper,
-              ),
+          Expanded(
+            child: _SegmentTabButton(
+              text: 'Daftar',
+              isSelected: isRegisterMode,
+              onTap: () {
+                onToggleMode(true);
+              },
             ),
           ),
         ],
@@ -304,30 +466,76 @@ class _SegmentTabs extends StatelessWidget {
   }
 }
 
+class _SegmentTabButton extends StatelessWidget {
+  const _SegmentTabButton({
+    required this.text,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String text;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = isSelected ? AppColors.durianGreen : AppColors.mutedText;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.softCardWhite : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.button),
+          border: isSelected
+              ? Border.all(color: AppColors.durianGreen)
+              : Border.all(color: Colors.transparent),
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.helper.copyWith(
+            color: textColor,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AuthTextField extends StatelessWidget {
   const _AuthTextField({
+    required this.controller,
     required this.label,
     required this.hint,
     required this.icon,
     this.obscureText = false,
     this.suffixIcon,
+    this.keyboardType,
+    this.enabled = true,
   });
 
+  final TextEditingController controller;
   final String label;
   final String hint;
   final IconData icon;
   final bool obscureText;
-  final IconData? suffixIcon;
+  final Widget? suffixIcon;
+  final TextInputType? keyboardType;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      controller: controller,
+      enabled: enabled,
+      keyboardType: keyboardType,
       obscureText: obscureText,
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: AppColors.durianGreen),
-        suffixIcon: suffixIcon == null
-            ? null
-            : Icon(suffixIcon, color: AppColors.durianGreen),
+        suffixIcon: suffixIcon,
         labelText: label,
         hintText: hint,
         filled: true,
@@ -337,6 +545,10 @@ class _AuthTextField extends StatelessWidget {
           borderSide: const BorderSide(color: AppColors.borderSoft),
         ),
         enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button),
+          borderSide: const BorderSide(color: AppColors.borderSoft),
+        ),
+        disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.button),
           borderSide: const BorderSide(color: AppColors.borderSoft),
         ),
@@ -366,13 +578,15 @@ class _GoogleButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 13),
         ),
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Dummy sahaja. Google Sign-In sebenar akan dibuat kemudian.',
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Google Sign-In akan dibuat selepas konfigurasi OAuth Supabase.',
+                ),
               ),
-            ),
-          );
+            );
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
