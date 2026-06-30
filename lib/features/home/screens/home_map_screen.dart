@@ -31,19 +31,52 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
     );
   }
 
+  Future<void> _refreshReports() async {
+    setState(() {
+      _loadReports();
+    });
+
+    await _reportsFuture;
+  }
+
   Future<void> _openAddReportScreen() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const AddReportScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const AddReportScreen()),
     );
 
     if (!mounted) {
       return;
     }
 
-    setState(_loadReports);
+    await _refreshReports();
+  }
+
+  Future<void> _openAdminReviewScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AdminReviewScreen()),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    await _refreshReports();
+  }
+
+  Future<void> _openFreshListScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const FreshListScreen()),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _refreshReports();
   }
 
   @override
@@ -52,24 +85,28 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
       backgroundColor: _DRColors.cream,
       body: Stack(
         children: [
-                    Positioned.fill(
+          Positioned.fill(
             child: FutureBuilder<List<DurianReportSummary>>(
+              key: ValueKey('map-area-'),
               future: _reportsFuture,
               builder: (context, snapshot) {
                 return _IllustratedMapArea(
                   reports: snapshot.data ?? const [],
-                  isLoading: snapshot.connectionState ==
-                      ConnectionState.waiting,
+                  isLoading:
+                      snapshot.connectionState == ConnectionState.waiting,
                 );
               },
             ),
           ),
 
-          const Positioned(
+          Positioned(
             top: 0,
             left: 0,
             right: 0,
-            child: SafeArea(bottom: false, child: _HomeTopPanel()),
+            child: SafeArea(
+              bottom: false,
+              child: _HomeTopPanel(onAdminTap: _openAdminReviewScreen),
+            ),
           ),
 
           const Positioned(right: 22, bottom: 150, child: _LocateButton()),
@@ -80,12 +117,13 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
             child: SizedBox(
               width: 270,
               child: FutureBuilder<List<DurianReportSummary>>(
+                key: ValueKey('map-area-'),
                 future: _reportsFuture,
                 builder: (context, snapshot) {
                   return _FloatingSummaryCard(
                     reports: snapshot.data ?? const [],
-                    isLoading: snapshot.connectionState ==
-                        ConnectionState.waiting,
+                    isLoading:
+                        snapshot.connectionState == ConnectionState.waiting,
                     hasError: snapshot.hasError,
                   );
                 },
@@ -105,12 +143,7 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
         ],
       ),
       bottomNavigationBar: _HomeBottomBar(
-        onFreshTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const FreshListScreen()),
-          );
-        },
+        onFreshTap: _openFreshListScreen,
         onProfileTap: () {
           Navigator.push(
             context,
@@ -152,7 +185,9 @@ class _DRAssets {
 }
 
 class _HomeTopPanel extends StatelessWidget {
-  const _HomeTopPanel();
+  const _HomeTopPanel({required this.onAdminTap});
+
+  final VoidCallback onAdminTap;
 
   @override
   Widget build(BuildContext context) {
@@ -198,14 +233,7 @@ class _HomeTopPanel extends StatelessWidget {
               ),
               _IconCircle(
                 icon: Icons.admin_panel_settings_rounded,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AdminReviewScreen(),
-                    ),
-                  );
-                },
+                onTap: onAdminTap,
               ),
               const SizedBox(width: 12),
               _IconCircle(
@@ -391,10 +419,7 @@ class _QuickChip extends StatelessWidget {
 }
 
 class _IllustratedMapArea extends StatelessWidget {
-  const _IllustratedMapArea({
-    required this.reports,
-    required this.isLoading,
-  });
+  const _IllustratedMapArea({required this.reports, required this.isLoading});
 
   final List<DurianReportSummary> reports;
   final bool isLoading;
@@ -439,9 +464,7 @@ class _IllustratedMapArea extends StatelessWidget {
                 Positioned(
                   top: (height * 0.46).clamp(210.0, height - 180).toDouble(),
                   left: (width * 0.16).clamp(18.0, width - 250).toDouble(),
-                  child: const _MapStatusPill(
-                    label: 'Tiada pin approved lagi',
-                  ),
+                  child: const _MapStatusPill(label: 'Tiada pin approved lagi'),
                 ),
               for (int index = 0; index < visibleReports.length; index++)
                 _buildReportMarker(
@@ -477,11 +500,7 @@ class _IllustratedMapArea extends StatelessWidget {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => PinDetailScreen(
-                report: report,
-              ),
-            ),
+            MaterialPageRoute(builder: (_) => PinDetailScreen(report: report)),
           );
         },
         child: _MapMarker(
@@ -507,25 +526,18 @@ class _IllustratedMapArea extends StatelessWidget {
 }
 
 class _MapStatusPill extends StatelessWidget {
-  const _MapStatusPill({
-    required this.label,
-  });
+  const _MapStatusPill({required this.label});
 
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 9,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
         color: _DRColors.cardWhite.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: _DRColors.borderSoft,
-        ),
+        border: Border.all(color: _DRColors.borderSoft),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.10),
@@ -671,26 +683,26 @@ class _FloatingSummaryCard extends StatelessWidget {
     final title = isLoading
         ? 'Memuatkan laporan...'
         : hasError
-            ? 'Laporan belum dimuat'
-            : totalReports == 0
-                ? 'Belum ada lokasi fresh'
-                : '$totalReports lokasi dari Supabase';
+        ? 'Laporan belum dimuat'
+        : totalReports == 0
+        ? 'Belum ada lokasi fresh'
+        : '$totalReports lokasi dari Supabase';
 
     final subtitle = isLoading
         ? 'Sedang sambung ke database'
         : hasError
-            ? 'Buka Fresh List untuk cuba semula'
-            : totalReports == 0
-                ? 'Tekan + untuk laporan pertama'
-                : 'Data live daripada Fresh List';
+        ? 'Buka Fresh List untuk cuba semula'
+        : totalReports == 0
+        ? 'Tekan + untuk laporan pertama'
+        : 'Data live daripada Fresh List';
 
     final updateText = isLoading
         ? 'Menyemak data terkini...'
         : hasError
-            ? 'Ada isu sambungan data'
-            : latestUpdate == null
-                ? 'Menunggu laporan komuniti'
-                : 'Update terbaru: $latestUpdate';
+        ? 'Ada isu sambungan data'
+        : latestUpdate == null
+        ? 'Menunggu laporan komuniti'
+        : 'Update terbaru: $latestUpdate';
 
     return Container(
       constraints: const BoxConstraints(minHeight: 84),
@@ -1259,7 +1271,3 @@ class _SoftMapPainter extends CustomPainter {
     return false;
   }
 }
-
-
-
-
