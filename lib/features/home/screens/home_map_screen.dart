@@ -1,4 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 
 import '../../../core/services/report_service.dart';
 
@@ -17,6 +22,14 @@ class HomeMapScreen extends StatefulWidget {
 
 class _HomeMapScreenState extends State<HomeMapScreen> {
   late Future<List<DurianReportSummary>> _reportsFuture;
+
+  final MapController _mapController = MapController();
+
+  LatLng? _currentLocation;
+  bool _isLocating = false;
+  String _selectedFilter = 'fresh';
+
+  static const LatLng _defaultMapCenter = LatLng(3.3400, 101.2500);
 
   @override
   void initState() {
@@ -37,6 +50,121 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
     });
 
     await _reportsFuture;
+  }
+
+  Future<void> _centerToCurrentLocation() async {
+    if (_isLocating) {
+      return;
+    }
+
+    setState(() {
+      _isLocating = true;
+    });
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (!serviceEnabled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Location service belum aktif. Sila aktifkan GPS/location.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+
+        if (!mounted) {
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Permission lokasi tidak dibenarkan. Sila allow location untuk center map.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Permission lokasi disekat. Sila buka Settings dan benarkan location permission.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      ).timeout(const Duration(seconds: 15));
+
+      if (!mounted) {
+        return;
+      }
+
+      final userLocation = LatLng(position.latitude, position.longitude);
+
+      setState(() {
+        _currentLocation = userLocation;
+      });
+
+      _mapController.move(userLocation, 15);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Map dicenterkan ke lokasi semasa.')),
+      );
+    } on TimeoutException {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'GPS mengambil masa terlalu lama. Cuba semula di kawasan terbuka.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal mendapatkan lokasi semasa. Sila cuba lagi.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+        });
+      }
+    }
   }
 
   Future<void> _openAddReportScreen() async {
@@ -79,6 +207,42 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
     await _refreshReports();
   }
 
+  List<DurianReportSummary> _filterReports(List<DurianReportSummary> reports) {
+    switch (_selectedFilter) {
+      case 'available':
+        return reports
+            .where((report) => report.stockStatus == 'available')
+            .toList(growable: false);
+      case 'cheap':
+        return reports
+            .where((report) => _extractPriceValue(report.price) <= 25)
+            .toList(growable: false);
+      case 'fresh':
+      default:
+        return reports;
+    }
+  }
+
+  double _extractPriceValue(String priceText) {
+    final match = RegExp(r'\d+(?:\.\d+)?').firstMatch(priceText);
+
+    if (match == null) {
+      return double.infinity;
+    }
+
+    return double.tryParse(match.group(0) ?? '') ?? double.infinity;
+  }
+
+  void _selectFilter(String filter) {
+    if (_selectedFilter == filter) {
+      return;
+    }
+
+    setState(() {
+      _selectedFilter = filter;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,8 +254,13 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
               key: ValueKey('map-area-'),
               future: _reportsFuture,
               builder: (context, snapshot) {
+                final reports = snapshot.data ?? const <DurianReportSummary>[];
+                final filteredReports = _filterReports(reports);
+
                 return _IllustratedMapArea(
-                  reports: snapshot.data ?? const [],
+                  mapController: _mapController,
+                  reports: filteredReports,
+                  currentLocation: _currentLocation,
                   isLoading:
                       snapshot.connectionState == ConnectionState.waiting,
                 );
@@ -105,39 +274,55 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
             right: 0,
             child: SafeArea(
               bottom: false,
-              child: _HomeTopPanel(onAdminTap: _openAdminReviewScreen),
-            ),
-          ),
-
-          const Positioned(right: 22, bottom: 150, child: _LocateButton()),
-
-          Positioned(
-            left: 28,
-            bottom: 46,
-            child: SizedBox(
-              width: 270,
-              child: FutureBuilder<List<DurianReportSummary>>(
-                key: ValueKey('map-area-'),
-                future: _reportsFuture,
-                builder: (context, snapshot) {
-                  return _FloatingSummaryCard(
-                    reports: snapshot.data ?? const [],
-                    isLoading:
-                        snapshot.connectionState == ConnectionState.waiting,
-                    hasError: snapshot.hasError,
-                  );
-                },
+              child: _HomeTopPanel(
+                onAdminTap: _openAdminReviewScreen,
+                selectedFilter: _selectedFilter,
+                onFilterSelected: _selectFilter,
               ),
             ),
           ),
 
           Positioned(
-            right: 18,
-            bottom: 42,
-            child: _ReportFab(
-              onTap: () {
-                _openAddReportScreen();
-              },
+            right: 22,
+            bottom: 150,
+            child: _LocateButton(
+              isLocating: _isLocating,
+              onTap: _centerToCurrentLocation,
+            ),
+          ),
+
+          Positioned(
+            left: 18,
+            right: 16,
+            bottom: 46,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: FutureBuilder<List<DurianReportSummary>>(
+                    key: ValueKey('home-summary-card'),
+                    future: _reportsFuture,
+                    builder: (context, snapshot) {
+                      final reports =
+                          snapshot.data ?? const <DurianReportSummary>[];
+                      final filteredReports = _filterReports(reports);
+
+                      return _FloatingSummaryCard(
+                        reports: filteredReports,
+                        isLoading:
+                            snapshot.connectionState == ConnectionState.waiting,
+                        hasError: snapshot.hasError,
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _ReportFab(
+                  onTap: () {
+                    _openAddReportScreen();
+                  },
+                ),
+              ],
             ),
           ),
         ],
@@ -172,11 +357,6 @@ class _DRColors {
   static const Color textMuted = Color(0xFF6D756B);
 
   static const Color borderSoft = Color(0xFFEEDFBF);
-
-  static const Color mapBase = Color(0xFFF3EBD8);
-  static const Color mapRiver = Color(0xFFBFE3EA);
-  static const Color mapGreen = Color(0xFFDCECCE);
-  static const Color mapRoadYellow = Color(0xFFFFD97A);
 }
 
 class _DRAssets {
@@ -185,9 +365,15 @@ class _DRAssets {
 }
 
 class _HomeTopPanel extends StatelessWidget {
-  const _HomeTopPanel({required this.onAdminTap});
+  const _HomeTopPanel({
+    required this.onAdminTap,
+    required this.selectedFilter,
+    required this.onFilterSelected,
+  });
 
   final VoidCallback onAdminTap;
+  final String selectedFilter;
+  final ValueChanged<String> onFilterSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +407,7 @@ class _HomeTopPanel extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Durian Radar',
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 25,
@@ -261,7 +447,7 @@ class _HomeTopPanel extends StatelessWidget {
               Text(
                 'Sekitar Kuala Selangor',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w900,
                   color: _DRColors.durianGreen,
                 ),
@@ -269,7 +455,10 @@ class _HomeTopPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const _QuickChipRow(),
+          _QuickChipRow(
+            selectedFilter: selectedFilter,
+            onSelected: onFilterSelected,
+          ),
         ],
       ),
     );
@@ -277,7 +466,10 @@ class _HomeTopPanel extends StatelessWidget {
 }
 
 class _QuickChipRow extends StatelessWidget {
-  const _QuickChipRow();
+  const _QuickChipRow({required this.selectedFilter, required this.onSelected});
+
+  final String selectedFilter;
+  final ValueChanged<String> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -303,28 +495,40 @@ class _QuickChipRow extends StatelessWidget {
           children: [
             SizedBox(
               width: freshWidth,
-              child: const _QuickChip(
+              child: _QuickChip(
                 label: 'Fresh',
                 icon: Icons.eco_rounded,
                 iconColor: _DRColors.freshGreen,
+                selected: selectedFilter == 'fresh',
+                onTap: () {
+                  onSelected('fresh');
+                },
               ),
             ),
             const SizedBox(width: gap),
             SizedBox(
               width: stockWidth,
-              child: const _QuickChip(
+              child: _QuickChip(
                 label: 'Masih Ada',
                 icon: Icons.calendar_month_rounded,
                 iconColor: _DRColors.warningYellow,
+                selected: selectedFilter == 'available',
+                onTap: () {
+                  onSelected('available');
+                },
               ),
             ),
             const SizedBox(width: gap),
             SizedBox(
               width: cheapWidth,
-              child: const _QuickChip(
+              child: _QuickChip(
                 label: 'Murah',
                 icon: Icons.sell_rounded,
                 iconColor: _DRColors.warningYellow,
+                selected: selectedFilter == 'cheap',
+                onTap: () {
+                  onSelected('cheap');
+                },
               ),
             ),
           ],
@@ -365,149 +569,172 @@ class _QuickChip extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.iconColor,
+    required this.selected,
+    required this.onTap,
   });
 
   final String label;
   final IconData icon;
   final Color iconColor;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 46,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
-      decoration: BoxDecoration(
-        color: _DRColors.creamSoft,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _DRColors.borderSoft, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          height: 46,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            color: selected ? _DRColors.paleGreen : _DRColors.creamSoft,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: selected ? _DRColors.durianGreen : _DRColors.borderSoft,
+              width: selected ? 1.7 : 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: selected ? 0.10 : 0.07),
+                blurRadius: selected ? 12 : 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 29,
-            height: 29,
-            decoration: BoxDecoration(color: iconColor, shape: BoxShape.circle),
-            child: Icon(icon, color: Colors.white, size: 17),
-          ),
-          const SizedBox(width: 7),
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                maxLines: 1,
-                style: const TextStyle(
-                  color: _DRColors.durianGreen,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w900,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 29,
+                height: 29,
+                decoration: BoxDecoration(
+                  color: selected ? _DRColors.durianGreen : iconColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: Colors.white, size: 17),
+              ),
+              const SizedBox(width: 7),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: selected
+                          ? _DRColors.durianGreen
+                          : _DRColors.durianGreen,
+                      fontSize: 13.5,
+                      fontWeight: selected ? FontWeight.w900 : FontWeight.w800,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _IllustratedMapArea extends StatelessWidget {
-  const _IllustratedMapArea({required this.reports, required this.isLoading});
+  const _IllustratedMapArea({
+    required this.mapController,
+    required this.reports,
+    required this.currentLocation,
+    required this.isLoading,
+  });
 
+  final MapController mapController;
   final List<DurianReportSummary> reports;
+  final LatLng? currentLocation;
   final bool isLoading;
-
-  static const List<Offset> _markerAnchors = [
-    Offset(0.55, 0.32),
-    Offset(0.25, 0.43),
-    Offset(0.72, 0.49),
-    Offset(0.49, 0.60),
-    Offset(0.38, 0.36),
-    Offset(0.62, 0.68),
-    Offset(0.18, 0.55),
-    Offset(0.80, 0.37),
-  ];
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: _DRColors.mapBase,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          final height = constraints.maxHeight;
-          final visibleReports = reports
-              .take(_markerAnchors.length)
-              .toList(growable: false);
+    final validReports = reports
+        .where((report) => report.latitude != 0 && report.longitude != 0)
+        .toList(growable: false);
 
-          return Stack(
-            children: [
-              const Positioned.fill(
-                child: CustomPaint(painter: _SoftMapPainter()),
-              ),
-              if (isLoading)
-                Positioned(
-                  top: (height * 0.46).clamp(210.0, height - 180).toDouble(),
-                  left: (width * 0.22).clamp(18.0, width - 210).toDouble(),
-                  child: const _MapStatusPill(
-                    label: 'Memuatkan pin Supabase...',
+    final mapCenter =
+        currentLocation ??
+        (validReports.isNotEmpty
+            ? LatLng(validReports.first.latitude, validReports.first.longitude)
+            : _HomeMapScreenState._defaultMapCenter);
+
+    return Stack(
+      children: [
+        FlutterMap(
+          mapController: mapController,
+          options: MapOptions(
+            initialCenter: mapCenter,
+            initialZoom: validReports.isNotEmpty ? 13 : 12,
+            minZoom: 5,
+            maxZoom: 18,
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.example.durian_radar',
+            ),
+            MarkerLayer(
+              markers: [
+                for (final report in validReports)
+                  Marker(
+                    point: LatLng(report.latitude, report.longitude),
+                    width: 64,
+                    height: 72,
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PinDetailScreen(report: report),
+                          ),
+                        );
+                      },
+                      child: _MapMarker(
+                        label: report.markerLabel,
+                        color: _markerColor(report.stockStatus),
+                        hasPhoto: report.photoUrl.trim().isNotEmpty,
+                      ),
+                    ),
                   ),
-                ),
-              if (!isLoading && visibleReports.isEmpty)
-                Positioned(
-                  top: (height * 0.46).clamp(210.0, height - 180).toDouble(),
-                  left: (width * 0.16).clamp(18.0, width - 250).toDouble(),
-                  child: const _MapStatusPill(label: 'Tiada pin approved lagi'),
-                ),
-              for (int index = 0; index < visibleReports.length; index++)
-                _buildReportMarker(
-                  context: context,
-                  report: visibleReports[index],
-                  index: index,
-                  width: width,
-                  height: height,
-                ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildReportMarker({
-    required BuildContext context,
-    required DurianReportSummary report,
-    required int index,
-    required double width,
-    required double height,
-  }) {
-    final anchor = _markerAnchors[index % _markerAnchors.length];
-
-    final left = (width * anchor.dx).clamp(12.0, width - 90).toDouble();
-    final top = (height * anchor.dy).clamp(210.0, height - 180).toDouble();
-
-    return Positioned(
-      top: top,
-      left: left,
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => PinDetailScreen(report: report)),
-          );
-        },
-        child: _MapMarker(
-          label: report.markerLabel,
-          color: _markerColor(report.stockStatus),
+                if (currentLocation != null)
+                  Marker(
+                    point: currentLocation!,
+                    width: 74,
+                    height: 74,
+                    child: const _UserLocationMarker(),
+                  ),
+              ],
+            ),
+          ],
         ),
-      ),
+        Positioned(
+          left: 18,
+          right: 18,
+          top: 262,
+          child: IgnorePointer(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: isLoading
+                  ? const _MapStatusPill(label: 'Memuatkan pin Supabase...')
+                  : currentLocation == null
+                  ? const _MapStatusPill(
+                      label: 'Tekan butang lokasi untuk center map',
+                    )
+                  : const _MapStatusPill(label: 'Map sekitar lokasi anda'),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -522,6 +749,48 @@ class _IllustratedMapArea extends StatelessWidget {
       default:
         return _DRColors.freshGreen;
     }
+  }
+}
+
+class _UserLocationMarker extends StatelessWidget {
+  const _UserLocationMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: _DRColors.durianGreen.withValues(alpha: 0.18),
+            shape: BoxShape.circle,
+          ),
+        ),
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: _DRColors.durianGreen,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 4),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.20),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.my_location_rounded,
+            color: Colors.white,
+            size: 17,
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -582,83 +851,228 @@ class _MapStatusPill extends StatelessWidget {
 }
 
 class _MapMarker extends StatelessWidget {
-  const _MapMarker({required this.label, required this.color});
+  const _MapMarker({
+    required this.label,
+    required this.color,
+    required this.hasPhoto,
+  });
 
   final String label;
   final Color color;
+  final bool hasPhoto;
 
   @override
   Widget build(BuildContext context) {
     final bool longLabel = label.length > 3;
+    final Color labelColor = color.computeLuminance() > 0.55
+        ? _DRColors.textDark
+        : Colors.white;
 
     return SizedBox(
-      width: 78,
-      height: 84,
+      width: 60,
+      height: 70,
       child: Stack(
         alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
         children: [
           Positioned(
-            top: 8,
-            child: Icon(
-              Icons.location_on_rounded,
-              size: 70,
-              color: Colors.black.withValues(alpha: 0.18),
-            ),
-          ),
-          const Positioned(
-            top: 0,
-            child: Icon(
-              Icons.location_on_rounded,
-              size: 74,
-              color: Colors.white,
+            top: 1,
+            child: CustomPaint(
+              size: const Size(52, 62),
+              painter: _SlimTeardropPainter(color: color),
             ),
           ),
           Positioned(
-            top: 4,
-            child: Icon(Icons.location_on_rounded, size: 66, color: color),
-          ),
-          Positioned(
-            top: 24,
+            top: 18,
+            left: 0,
+            right: 0,
             child: Text(
               label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.clip,
               style: TextStyle(
-                color: Colors.white,
-                fontSize: longLabel ? 13 : 16,
+                color: labelColor,
+                fontSize: longLabel ? 10.5 : 12.8,
                 fontWeight: FontWeight.w900,
-                letterSpacing: -0.3,
+                letterSpacing: -0.25,
               ),
             ),
           ),
+          if (hasPhoto)
+            Positioned(
+              right: 7,
+              top: 6,
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: _DRColors.cardWhite,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _DRColors.durianGreen.withValues(alpha: 0.85),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.14),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.photo_camera_rounded,
+                  color: _DRColors.durianGreen,
+                  size: 10.5,
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
+class _SlimTeardropPainter extends CustomPainter {
+  const _SlimTeardropPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(size.width * 0.50, size.height * 0.96)
+      ..cubicTo(
+        size.width * 0.18,
+        size.height * 0.67,
+        size.width * 0.08,
+        size.height * 0.42,
+        size.width * 0.12,
+        size.height * 0.25,
+      )
+      ..cubicTo(
+        size.width * 0.18,
+        size.height * 0.05,
+        size.width * 0.34,
+        size.height * 0.00,
+        size.width * 0.50,
+        size.height * 0.00,
+      )
+      ..cubicTo(
+        size.width * 0.66,
+        size.height * 0.00,
+        size.width * 0.82,
+        size.height * 0.05,
+        size.width * 0.88,
+        size.height * 0.25,
+      )
+      ..cubicTo(
+        size.width * 0.92,
+        size.height * 0.42,
+        size.width * 0.82,
+        size.height * 0.67,
+        size.width * 0.50,
+        size.height * 0.96,
+      )
+      ..close();
+
+    canvas.drawShadow(
+      path.shift(const Offset(0, 2)),
+      Colors.black.withValues(alpha: 0.28),
+      4,
+      true,
+    );
+
+    final outlinePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.2
+      ..strokeJoin = StrokeJoin.round;
+
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final glossPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.16)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(path, outlinePaint);
+    canvas.drawPath(path, fillPaint);
+
+    final gloss = Path()
+      ..moveTo(size.width * 0.28, size.height * 0.18)
+      ..cubicTo(
+        size.width * 0.38,
+        size.height * 0.07,
+        size.width * 0.55,
+        size.height * 0.07,
+        size.width * 0.66,
+        size.height * 0.15,
+      )
+      ..cubicTo(
+        size.width * 0.52,
+        size.height * 0.13,
+        size.width * 0.38,
+        size.height * 0.18,
+        size.width * 0.28,
+        size.height * 0.32,
+      )
+      ..close();
+
+    canvas.drawPath(gloss, glossPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SlimTeardropPainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
+}
+
 class _LocateButton extends StatelessWidget {
-  const _LocateButton();
+  const _LocateButton({required this.isLocating, required this.onTap});
+
+  final bool isLocating;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: _DRColors.cardWhite,
-        shape: BoxShape.circle,
-        border: Border.all(color: _DRColors.borderSoft, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.13),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: isLocating ? null : onTap,
+        child: Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: _DRColors.cardWhite,
+            shape: BoxShape.circle,
+            border: Border.all(color: _DRColors.borderSoft, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.13),
+                blurRadius: 12,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: const Icon(
-        Icons.my_location_rounded,
-        color: _DRColors.durianGreen,
-        size: 31,
+          child: isLocating
+              ? const Padding(
+                  padding: EdgeInsets.all(15),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: _DRColors.durianGreen,
+                  ),
+                )
+              : const Icon(
+                  Icons.my_location_rounded,
+                  color: _DRColors.durianGreen,
+                  size: 31,
+                ),
+        ),
       ),
     );
   }
@@ -686,7 +1100,7 @@ class _FloatingSummaryCard extends StatelessWidget {
         ? 'Laporan belum dimuat'
         : totalReports == 0
         ? 'Belum ada lokasi fresh'
-        : '$totalReports lokasi dari Supabase';
+        : '$totalReports lokasi aktif di Durian Radar';
 
     final subtitle = isLoading
         ? 'Sedang sambung ke database'
@@ -776,7 +1190,7 @@ class _FloatingSummaryCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: _DRColors.textMuted,
-                          fontSize: 10.5,
+                          fontSize: 10,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -800,8 +1214,8 @@ class _ReportFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 112,
-      height: 108,
+      width: 88,
+      height: 90,
       child: Stack(
         alignment: Alignment.topCenter,
         children: [
@@ -810,12 +1224,12 @@ class _ReportFab extends StatelessWidget {
             child: GestureDetector(
               onTap: onTap,
               child: Container(
-                width: 86,
-                height: 86,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
                   color: _DRColors.durianYellow,
                   shape: BoxShape.circle,
-                  border: Border.all(color: _DRColors.creamSoft, width: 7),
+                  border: Border.all(color: _DRColors.creamSoft, width: 6),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.18),
@@ -827,7 +1241,7 @@ class _ReportFab extends StatelessWidget {
                 child: const Icon(
                   Icons.add_rounded,
                   color: _DRColors.textDark,
-                  size: 48,
+                  size: 40,
                 ),
               ),
             ),
@@ -841,11 +1255,11 @@ class _ReportFab extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: const Text(
-                'Laporkan Durian',
+                'Laporkan',
                 maxLines: 1,
                 style: TextStyle(
                   color: _DRColors.textDark,
-                  fontSize: 10.5,
+                  fontSize: 10,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -959,315 +1373,5 @@ class _BottomNavItem extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _SoftMapPainter extends CustomPainter {
-  const _SoftMapPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = _DRColors.mapBase);
-
-    final greenPaint = Paint()
-      ..color = _DRColors.mapGreen.withValues(alpha: 0.85)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawOval(
-      Rect.fromLTWH(size.width * 0.80, size.height * 0.20, 130, 170),
-      greenPaint,
-    );
-    canvas.drawOval(
-      Rect.fromLTWH(size.width * 0.06, size.height * 0.52, 90, 140),
-      greenPaint,
-    );
-    canvas.drawOval(
-      Rect.fromLTWH(size.width * 0.66, size.height * 0.63, 150, 120),
-      greenPaint,
-    );
-    canvas.drawOval(
-      Rect.fromLTWH(size.width * 0.35, size.height * 0.25, 86, 70),
-      greenPaint,
-    );
-
-    final riverPaint = Paint()
-      ..color = _DRColors.mapRiver
-      ..strokeWidth = 32
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final riverLeft = Path()
-      ..moveTo(-20, size.height * 0.30)
-      ..quadraticBezierTo(
-        size.width * 0.10,
-        size.height * 0.46,
-        size.width * 0.03,
-        size.height * 0.72,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.00,
-        size.height * 0.84,
-        size.width * 0.12,
-        size.height + 30,
-      );
-
-    final riverBottom = Path()
-      ..moveTo(size.width * 0.10, size.height * 0.86)
-      ..quadraticBezierTo(
-        size.width * 0.35,
-        size.height * 0.77,
-        size.width * 0.58,
-        size.height * 0.90,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.76,
-        size.height,
-        size.width + 30,
-        size.height * 0.84,
-      );
-
-    canvas.drawPath(riverLeft, riverPaint);
-    canvas.drawPath(riverBottom, riverPaint);
-
-    _drawMajorRoad(
-      canvas,
-      Path()
-        ..moveTo(size.width * 0.02, size.height * 0.31)
-        ..quadraticBezierTo(
-          size.width * 0.36,
-          size.height * 0.20,
-          size.width * 0.74,
-          size.height * 0.36,
-        )
-        ..quadraticBezierTo(
-          size.width * 0.90,
-          size.height * 0.42,
-          size.width * 1.06,
-          size.height * 0.39,
-        ),
-    );
-
-    _drawMajorRoad(
-      canvas,
-      Path()
-        ..moveTo(size.width * 0.46, -20)
-        ..quadraticBezierTo(
-          size.width * 0.48,
-          size.height * 0.28,
-          size.width * 0.43,
-          size.height * 0.50,
-        )
-        ..quadraticBezierTo(
-          size.width * 0.39,
-          size.height * 0.70,
-          size.width * 0.50,
-          size.height + 30,
-        ),
-    );
-
-    _drawMajorRoad(
-      canvas,
-      Path()
-        ..moveTo(size.width * 0.18, size.height * 1.02)
-        ..quadraticBezierTo(
-          size.width * 0.42,
-          size.height * 0.74,
-          size.width * 0.60,
-          size.height * 0.58,
-        )
-        ..quadraticBezierTo(
-          size.width * 0.77,
-          size.height * 0.42,
-          size.width * 0.88,
-          size.height * 0.06,
-        ),
-    );
-
-    _drawMinorRoad(
-      canvas,
-      Path()
-        ..moveTo(size.width * 0.05, size.height * 0.44)
-        ..lineTo(size.width * 0.92, size.height * 0.30),
-    );
-
-    _drawMinorRoad(
-      canvas,
-      Path()
-        ..moveTo(size.width * 0.12, size.height * 0.58)
-        ..quadraticBezierTo(
-          size.width * 0.50,
-          size.height * 0.48,
-          size.width * 0.90,
-          size.height * 0.55,
-        ),
-    );
-
-    _drawMinorRoad(
-      canvas,
-      Path()
-        ..moveTo(size.width * 0.20, size.height * 0.25)
-        ..quadraticBezierTo(
-          size.width * 0.38,
-          size.height * 0.43,
-          size.width * 0.70,
-          size.height * 0.70,
-        ),
-    );
-
-    _drawMinorRoad(
-      canvas,
-      Path()
-        ..moveTo(size.width * 0.14, size.height * 0.70)
-        ..lineTo(size.width * 0.86, size.height * 0.72),
-    );
-
-    _drawMinorRoad(
-      canvas,
-      Path()
-        ..moveTo(size.width * 0.70, size.height * 0.18)
-        ..lineTo(size.width * 0.55, size.height * 0.82),
-    );
-
-    _drawText(
-      canvas,
-      'KUALA\nSELANGOR',
-      Offset(size.width * 0.27, size.height * 0.28),
-      size: 15,
-      weight: FontWeight.w800,
-    );
-
-    _drawText(
-      canvas,
-      'Taman\nMelawati',
-      Offset(size.width * 0.54, size.height * 0.26),
-      size: 11,
-    );
-
-    _drawText(
-      canvas,
-      'Kampung\nBukit Rotan',
-      Offset(size.width * 0.45, size.height * 0.46),
-      size: 11,
-    );
-
-    _drawText(
-      canvas,
-      'Bestari\nJaya',
-      Offset(size.width * 0.83, size.height * 0.59),
-      size: 11,
-    );
-
-    _drawText(
-      canvas,
-      'Sungai\nSelangor',
-      Offset(size.width * 0.08, size.height * 0.66),
-      size: 10,
-      color: const Color(0xFF438BA0),
-    );
-
-    _drawRouteLabel(
-      canvas,
-      'B18',
-      Offset(size.width * 0.46, size.height * 0.22),
-    );
-
-    _drawRouteLabel(
-      canvas,
-      'AH2',
-      Offset(size.width * 0.76, size.height * 0.36),
-      blue: true,
-    );
-  }
-
-  void _drawMajorRoad(Canvas canvas, Path path) {
-    final outerPaint = Paint()
-      ..color = _DRColors.mapRoadYellow
-      ..strokeWidth = 12
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final innerPaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 7
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawPath(path, outerPaint);
-    canvas.drawPath(path, innerPaint);
-  }
-
-  void _drawMinorRoad(Canvas canvas, Path path) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.62)
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawPath(path, paint);
-  }
-
-  void _drawText(
-    Canvas canvas,
-    String text,
-    Offset offset, {
-    double size = 12,
-    Color color = const Color(0xFF7B817B),
-    FontWeight weight = FontWeight.w600,
-  }) {
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          color: color,
-          fontSize: size,
-          height: 1.1,
-          fontWeight: weight,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    )..layout();
-
-    textPainter.paint(canvas, offset);
-  }
-
-  void _drawRouteLabel(
-    Canvas canvas,
-    String text,
-    Offset offset, {
-    bool blue = false,
-  }) {
-    final rect = Rect.fromLTWH(offset.dx, offset.dy, 28, 16);
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(4));
-
-    final paint = Paint()
-      ..color = blue ? const Color(0xFF3D8ADB) : const Color(0xFFFFD34F);
-
-    canvas.drawRRect(rrect, paint);
-
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    textPainter.paint(
-      canvas,
-      Offset(
-        offset.dx + (28 - textPainter.width) / 2,
-        offset.dy + (16 - textPainter.height) / 2,
-      ),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
   }
 }
