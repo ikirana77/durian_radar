@@ -326,6 +326,10 @@ class _PendingReportCard extends StatelessWidget {
     return report.sellerPhone.trim().isNotEmpty;
   }
 
+  bool get _hasPhotoUrl {
+    return report.photoUrl.trim().isNotEmpty;
+  }
+
   Future<void> _openAdminNavigation(BuildContext context) async {
     if (!_hasCoordinates) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -463,6 +467,10 @@ class _PendingReportCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
+          if (_hasPhotoUrl) ...[
+            _AdminPhotoPreview(photoUrl: report.photoUrl.trim()),
+            const SizedBox(height: 14),
+          ],
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -610,6 +618,98 @@ class _PendingReportCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminPhotoPreview extends StatelessWidget {
+  const _AdminPhotoPreview({required this.photoUrl});
+
+  final String photoUrl;
+
+  static const Color _green = Color(0xFF2F6B3F);
+  static const Color _darkGreen = Color(0xFF17412A);
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: Stack(
+        children: [
+          Image.network(
+            photoUrl,
+            width: double.infinity,
+            height: 190,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) {
+                return child;
+              }
+
+              return Container(
+                width: double.infinity,
+                height: 190,
+                color: const Color(0xFFFFFAEC),
+                child: const Center(
+                  child: CircularProgressIndicator(color: _green),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: double.infinity,
+                height: 150,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFAEC),
+                  border: Border.all(color: const Color(0xFFE8DEC3)),
+                ),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.broken_image_outlined, color: _green, size: 34),
+                    SizedBox(height: 8),
+                    Text(
+                      'Gambar gerai tidak dapat dipaparkan',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _darkGreen,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          Positioned(
+            left: 12,
+            top: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.photo_camera_rounded, color: _green, size: 15),
+                  SizedBox(width: 5),
+                  Text(
+                    'Gambar laporan',
+                    style: TextStyle(
+                      color: _darkGreen,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
