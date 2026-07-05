@@ -28,6 +28,7 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
 
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   late Future<List<DurianReportSummary>> _reportsFuture;
 
@@ -315,13 +316,6 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
     }
   }
 
-  String _locationCaption() {
-    if (_currentLocation != null) {
-      return 'Sekitar lokasi anda';
-    }
-    return 'Sekitar Kuala Selangor';
-  }
-
   Future<void> _openFilterSheet() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -403,16 +397,69 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
     );
   }
 
+  Future<void> _showHowToUseSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return const _MenuInfoSheet(
+          icon: Icons.help_outline_rounded,
+          title: 'Cara Guna Durian Radar',
+          bullets: [
+            'Tekan Peta untuk lihat lokasi gerai durian aktif.',
+            'Gunakan Fresh, Masih Ada dan Murah untuk tapis lokasi.',
+            'Tekan pin pada peta untuk lihat butiran gerai.',
+            'Tekan Lapor untuk hantar lokasi gerai durian baharu.',
+            'Simpan gerai pilihan menggunakan ikon hati.',
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showAboutAppSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return const _MenuInfoSheet(
+          icon: Icons.info_outline_rounded,
+          title: 'Tentang Durian Radar',
+          imageAsset: _DRAssets.developerTeam,
+          bullets: [
+            'Durian Radar membantu pengguna mencari gerai durian aktif.',
+            'Data lokasi dikemas kini melalui laporan komuniti.',
+            'Admin boleh menyemak dan mengesahkan laporan sebelum dipaparkan.',
+            'Dibangunkan oleh: Mdm Intan, Nazlah, Nabilah, Qausar dan Sharizat, pasukan pembangun aplikasi dari Kolej Vokasional Kuala Selangor.',
+            'Versi ini dibangunkan untuk demo aplikasi dan pengujian awal.',
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: _HomeDrawer(
+        onFreshTap: _openFreshListScreen,
+        onMapTap: () {},
+        onReportTap: _openAddReportScreen,
+        onFavoritesTap: _openFavoritesScreen,
+        onProfileTap: _openProfileScreen,
+        onAdminTap: _openAdminReviewScreen,
+        onHelpTap: _showHowToUseSheet,
+        onAboutTap: _showAboutAppSheet,
+      ),
       backgroundColor: _DRColors.appBackground,
       body: SafeArea(
         child: Column(
           children: [
             _HomeTopSection(
               searchController: _searchController,
-              locationText: _locationCaption(),
               selectedFilter: _selectedFilter,
               onFilterSelected: (filter) {
                 setState(() {
@@ -424,9 +471,8 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
                 setState(() {});
               },
               onMenuTap: () {
-                _showSnack('Menu akan ditambah dalam versi penuh.');
+                _scaffoldKey.currentState?.openDrawer();
               },
-              onAdminTap: _openAdminReviewScreen,
               onNotificationTap: _openAdminReviewScreen,
               onFilterTap: _openFilterSheet,
             ),
@@ -607,26 +653,478 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
   }
 }
 
+class _HomeDrawer extends StatelessWidget {
+  const _HomeDrawer({
+    required this.onFreshTap,
+    required this.onMapTap,
+    required this.onReportTap,
+    required this.onFavoritesTap,
+    required this.onProfileTap,
+    required this.onAdminTap,
+    required this.onHelpTap,
+    required this.onAboutTap,
+  });
+
+  final VoidCallback onFreshTap;
+  final VoidCallback onMapTap;
+  final VoidCallback onReportTap;
+  final VoidCallback onFavoritesTap;
+  final VoidCallback onProfileTap;
+  final VoidCallback onAdminTap;
+  final VoidCallback onHelpTap;
+  final VoidCallback onAboutTap;
+
+  void _closeThenRun(BuildContext context, VoidCallback action) {
+    Navigator.of(context).pop();
+    Future<void>.delayed(const Duration(milliseconds: 160), action);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      backgroundColor: _DRColors.appBackground,
+      child: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const _DrawerBrandHeader(),
+            const SizedBox(height: 8),
+            _DrawerActionItem(
+              icon: Icons.map_rounded,
+              title: 'Peta',
+              subtitle: 'Lihat lokasi gerai durian aktif',
+              selected: true,
+              onTap: () {
+                Navigator.of(context).pop();
+                onMapTap();
+              },
+            ),
+            _DrawerActionItem(
+              icon: Icons.view_list_rounded,
+              title: 'Fresh List',
+              subtitle: 'Senarai gerai durian terkini',
+              onTap: () => _closeThenRun(context, onFreshTap),
+            ),
+            _DrawerActionItem(
+              icon: Icons.add_location_alt_rounded,
+              title: 'Laporkan Durian',
+              subtitle: 'Tambah lokasi gerai durian baharu',
+              onTap: () => _closeThenRun(context, onReportTap),
+            ),
+            _DrawerActionItem(
+              icon: Icons.favorite_rounded,
+              title: 'Kegemaran',
+              subtitle: 'Gerai durian yang anda simpan',
+              onTap: () => _closeThenRun(context, onFavoritesTap),
+            ),
+            _DrawerActionItem(
+              icon: Icons.person_rounded,
+              title: 'Profil / Akaun',
+              subtitle: 'Log masuk dan urus akaun Google',
+              onTap: () => _closeThenRun(context, onProfileTap),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(22, 18, 22, 8),
+              child: Text(
+                'Pengurusan',
+                style: TextStyle(
+                  color: _DRColors.textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.7,
+                ),
+              ),
+            ),
+            _DrawerActionItem(
+              icon: Icons.admin_panel_settings_rounded,
+              title: 'Admin Review',
+              subtitle: 'Semak dan sahkan laporan komuniti',
+              onTap: () => _closeThenRun(context, onAdminTap),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(22, 18, 22, 8),
+              child: Text(
+                'Maklumat',
+                style: TextStyle(
+                  color: _DRColors.textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.7,
+                ),
+              ),
+            ),
+            _DrawerActionItem(
+              icon: Icons.help_outline_rounded,
+              title: 'Cara Guna',
+              subtitle: 'Panduan ringkas menggunakan app',
+              onTap: () => _closeThenRun(context, onHelpTap),
+            ),
+            _DrawerActionItem(
+              icon: Icons.info_outline_rounded,
+              title: 'Tentang Durian Radar',
+              subtitle: 'Maklumat aplikasi dan fungsi utama',
+              onTap: () => _closeThenRun(context, onAboutTap),
+            ),
+            const SizedBox(height: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DrawerBrandHeader extends StatelessWidget {
+  const _DrawerBrandHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      decoration: BoxDecoration(
+        color: _DRColors.cardWhite,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: _DRColors.borderSoft),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Image.asset(
+            _DRAssets.durianLogo,
+            width: 62,
+            height: 62,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) {
+              return Container(
+                width: 62,
+                height: 62,
+                decoration: const BoxDecoration(
+                  color: _DRColors.paleGreen,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.eco_rounded,
+                  color: _DRColors.durianGreen,
+                  size: 34,
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'DURIAN',
+                  style: TextStyle(
+                    color: _DRColors.textDark,
+                    fontSize: 20,
+                    height: 0.95,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                Text(
+                  'RADAR',
+                  style: TextStyle(
+                    color: _DRColors.freshGreen,
+                    fontSize: 20,
+                    height: 0.95,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Cari durian fresh sekitar anda',
+                  style: TextStyle(
+                    color: _DRColors.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DrawerActionItem extends StatelessWidget {
+  const _DrawerActionItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = selected ? _DRColors.paleGreen : Colors.transparent;
+    final iconBg = selected ? _DRColors.durianGreen : _DRColors.creamSoft;
+    final iconColor = selected ? Colors.white : _DRColors.durianGreen;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      child: Material(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: iconColor, size: 23),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: selected
+                              ? _DRColors.durianGreen
+                              : _DRColors.textDark,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _DRColors.textMuted,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: selected ? _DRColors.durianGreen : _DRColors.textMuted,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuInfoSheet extends StatelessWidget {
+  const _MenuInfoSheet({
+    required this.icon,
+    required this.title,
+    required this.bullets,
+    this.imageAsset,
+  });
+
+  final IconData icon;
+  final String title;
+  final List<String> bullets;
+  final String? imageAsset;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: FractionallySizedBox(
+        heightFactor: 0.88,
+        alignment: Alignment.bottomCenter,
+        child: Container(
+          margin: const EdgeInsets.all(14),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+          decoration: BoxDecoration(
+            color: _DRColors.cardWhite,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.14),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: _DRColors.borderSoft,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: _DRColors.paleGreen,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: _DRColors.durianGreen, size: 27),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: _DRColors.textDark,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (imageAsset != null) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: Container(
+                              width: double.infinity,
+                              color: _DRColors.creamSoft,
+                              child: ClipRect(
+                                child: Transform.scale(
+                                  scale: 1.0,
+                                  alignment: Alignment.center,
+                                  child: Image.asset(
+                                    imageAsset!,
+                                    fit: BoxFit.contain,
+                                    alignment: Alignment.center,
+                                    errorBuilder: (_, _, _) {
+                                      return Container(
+                                        width: double.infinity,
+                                        height: 180,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: _DRColors.paleGreen,
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          border: Border.all(
+                                            color: _DRColors.borderSoft,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Gambar pasukan pembangun belum dijumpai.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: _DRColors.durianGreen,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                      ],
+                      for (final bullet in bullets)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 11),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                color: _DRColors.freshGreen,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 9),
+                              Expanded(
+                                child: Text(
+                                  bullet,
+                                  style: const TextStyle(
+                                    color: _DRColors.textDark,
+                                    fontSize: 13.5,
+                                    height: 1.32,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HomeTopSection extends StatelessWidget {
   const _HomeTopSection({
     required this.searchController,
-    required this.locationText,
     required this.selectedFilter,
     required this.onFilterSelected,
     required this.onSearchChanged,
     required this.onMenuTap,
-    required this.onAdminTap,
     required this.onNotificationTap,
     required this.onFilterTap,
   });
 
   final TextEditingController searchController;
-  final String locationText;
   final _HomeFilter selectedFilter;
   final ValueChanged<_HomeFilter> onFilterSelected;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onMenuTap;
-  final VoidCallback onAdminTap;
   final VoidCallback onNotificationTap;
   final VoidCallback onFilterTap;
 
@@ -648,8 +1146,8 @@ class _HomeTopSection extends StatelessWidget {
                     children: [
                       Image.asset(
                         _DRAssets.durianLogo,
-                        width: 42,
-                        height: 42,
+                        width: 58,
+                        height: 58,
                         fit: BoxFit.contain,
                         errorBuilder: (_, _, _) {
                           return Container(
@@ -666,7 +1164,7 @@ class _HomeTopSection extends StatelessWidget {
                           );
                         },
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       const Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -675,20 +1173,20 @@ class _HomeTopSection extends StatelessWidget {
                             'DURIAN',
                             style: TextStyle(
                               color: _DRColors.textDark,
-                              fontSize: 14.5,
-                              height: 0.95,
+                              fontSize: 18,
+                              height: 0.92,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: 0.15,
+                              letterSpacing: 0.2,
                             ),
                           ),
                           Text(
                             'RADAR',
                             style: TextStyle(
                               color: _DRColors.freshGreen,
-                              fontSize: 14.5,
-                              height: 0.95,
+                              fontSize: 18,
+                              height: 0.92,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: 0.15,
+                              letterSpacing: 0.2,
                             ),
                           ),
                         ],
@@ -701,41 +1199,6 @@ class _HomeTopSection extends StatelessWidget {
               _TopSquareButton(
                 icon: Icons.notifications_none_rounded,
                 onTap: onNotificationTap,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(
-                Icons.location_on_rounded,
-                color: _DRColors.durianGreen,
-                size: 18,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  locationText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _DRColors.durianGreen,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: onAdminTap,
-                child: const Text(
-                  'Admin',
-                  style: TextStyle(
-                    color: _DRColors.textMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
               ),
             ],
           ),
@@ -1940,4 +2403,5 @@ class _DRColors {
 
 class _DRAssets {
   static const String durianLogo = 'assets/images/durian_logo.png';
+  static const String developerTeam = 'assets/images/team_developers.png';
 }
