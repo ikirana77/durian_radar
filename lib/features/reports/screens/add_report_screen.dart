@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/report_service.dart';
@@ -27,10 +29,13 @@ class _AddReportScreenState extends State<AddReportScreen> {
   final TextEditingController _sellerPhoneController = TextEditingController();
   final TextEditingController _latitudeController = TextEditingController();
   final TextEditingController _longitudeController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
 
   String _selectedStockStatus = 'Banyak';
   bool _isSubmitting = false;
   bool _isGettingLocation = false;
+  bool _isPickingPhoto = false;
+  XFile? _selectedPhoto;
   String? _statusMessage;
   bool _isStatusError = false;
 
@@ -110,11 +115,36 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
     setState(() {
       _isSubmitting = true;
-      _statusMessage = 'Sedang menghantar laporan ke Supabase...';
+      _statusMessage = 'Sedang menyediakan laporan...';
       _isStatusError = false;
     });
 
     try {
+      String? photoUrl;
+
+      if (_selectedPhoto != null) {
+        if (mounted) {
+          setState(() {
+            _statusMessage = 'Sedang upload gambar gerai...';
+            _isStatusError = false;
+          });
+        }
+
+        final photoBytes = await _selectedPhoto!.readAsBytes();
+
+        photoUrl = await ReportService.uploadReportPhoto(
+          bytes: photoBytes,
+          originalFileName: _selectedPhoto!.name,
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _statusMessage = 'Sedang menghantar laporan ke Supabase...';
+          _isStatusError = false;
+        });
+      }
+
       await ReportService.createPendingReport(
         spotId: _temporarySpotId,
         stallName: stallName,
@@ -125,6 +155,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
         latitude: latitude,
         longitude: longitude,
         sellerPhone: sellerPhone,
+        photoUrl: photoUrl,
       );
 
       if (!mounted) return;
@@ -146,6 +177,78 @@ class _AddReportScreenState extends State<AddReportScreen> {
         });
       }
     }
+  }
+
+  Future<void> _pickPhotoFromGallery() async {
+    await _pickPhoto(ImageSource.gallery);
+  }
+
+  Future<void> _takePhotoWithCamera() async {
+    await _pickPhoto(ImageSource.camera);
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    if (_isSubmitting || _isPickingPhoto) {
+      return;
+    }
+
+    setState(() {
+      _isPickingPhoto = true;
+      _statusMessage = source == ImageSource.camera
+          ? 'Sedang membuka kamera...'
+          : 'Sedang membuka gallery...';
+      _isStatusError = false;
+    });
+
+    try {
+      final pickedPhoto = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1280,
+        imageQuality: 78,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (pickedPhoto == null) {
+        _showStatus('Tiada gambar dipilih.');
+        return;
+      }
+
+      setState(() {
+        _selectedPhoto = pickedPhoto;
+        _statusMessage = 'Gambar gerai berjaya dipilih.';
+        _isStatusError = false;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showStatus(
+        'Gagal memilih gambar. Sila cuba semula atau pilih dari gallery.',
+        isError: true,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPickingPhoto = false;
+        });
+      }
+    }
+  }
+
+  void _clearSelectedPhoto() {
+    if (_isSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _selectedPhoto = null;
+      _statusMessage = 'Gambar gerai dibuang daripada laporan.';
+      _isStatusError = false;
+    });
   }
 
   Future<bool?> _askUserToLogin() async {
@@ -421,7 +524,14 @@ class _AddReportScreenState extends State<AddReportScreen> {
                 },
               ),
               const SizedBox(height: AppSpacing.xl),
-              const _PhotoUploadDummy(),
+              _PhotoUploadCard(
+                selectedPhoto: _selectedPhoto,
+                isSubmitting: _isSubmitting,
+                isPickingPhoto: _isPickingPhoto,
+                onPickFromGallery: _pickPhotoFromGallery,
+                onTakePhoto: _takePhotoWithCamera,
+                onClearPhoto: _clearSelectedPhoto,
+              ),
               if (_statusMessage != null) ...[
                 const SizedBox(height: AppSpacing.l),
                 _StatusBox(message: _statusMessage!, isError: _isStatusError),
@@ -900,11 +1010,27 @@ class _StatusChoice extends StatelessWidget {
   }
 }
 
-class _PhotoUploadDummy extends StatelessWidget {
-  const _PhotoUploadDummy();
+class _PhotoUploadCard extends StatelessWidget {
+  const _PhotoUploadCard({
+    required this.selectedPhoto,
+    required this.isSubmitting,
+    required this.isPickingPhoto,
+    required this.onPickFromGallery,
+    required this.onTakePhoto,
+    required this.onClearPhoto,
+  });
+
+  final XFile? selectedPhoto;
+  final bool isSubmitting;
+  final bool isPickingPhoto;
+  final VoidCallback onPickFromGallery;
+  final VoidCallback onTakePhoto;
+  final VoidCallback onClearPhoto;
 
   @override
   Widget build(BuildContext context) {
+    final hasPhoto = selectedPhoto != null;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.l),
@@ -913,24 +1039,105 @@ class _PhotoUploadDummy extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: AppColors.borderSoft),
       ),
-      child: const Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.add_a_photo_outlined,
-            color: AppColors.durianGreen,
-            size: 36,
+          const _FormSectionTitle(number: '4', title: 'Gambar Gerai'),
+          const SizedBox(height: AppSpacing.m),
+          if (hasPhoto)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.button),
+              child: Image.file(
+                File(selectedPhoto!.path),
+                width: double.infinity,
+                height: 180,
+                fit: BoxFit.cover,
+              ),
+            )
+          else
+            Container(
+              width: double.infinity,
+              height: 150,
+              decoration: BoxDecoration(
+                color: AppColors.creamBackground,
+                borderRadius: BorderRadius.circular(AppRadius.button),
+                border: Border.all(color: AppColors.borderSoft),
+              ),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_a_photo_outlined,
+                    color: AppColors.durianGreen,
+                    size: 38,
+                  ),
+                  SizedBox(height: AppSpacing.s),
+                  Text(
+                    'Tambah gambar gerai / papan harga',
+                    style: AppTextStyles.cardTitle,
+                  ),
+                  SizedBox(height: AppSpacing.xs),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacing.m),
+                    child: Text(
+                      'Gambar akan diupload ke Supabase Storage bersama laporan.',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.helper,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (hasPhoto) ...[
+            const SizedBox(height: AppSpacing.s),
+            Text(
+              selectedPhoto!.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.helper,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.m),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: isSubmitting || isPickingPhoto
+                      ? null
+                      : onPickFromGallery,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Gallery'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: isSubmitting || isPickingPhoto
+                      ? null
+                      : onTakePhoto,
+                  icon: isPickingPhoto
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.photo_camera_outlined),
+                  label: Text(isPickingPhoto ? 'Buka...' : 'Kamera'),
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: AppSpacing.s),
-          Text(
-            'Tambah gambar gerai / papan harga',
-            style: AppTextStyles.cardTitle,
-          ),
-          SizedBox(height: AppSpacing.xs),
-          Text(
-            'Fungsi upload gambar akan dibuat selepas Supabase Storage disambungkan.',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.helper,
-          ),
+          if (hasPhoto) ...[
+            const SizedBox(height: AppSpacing.s),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: isSubmitting ? null : onClearPhoto,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Buang gambar'),
+              ),
+            ),
+          ],
         ],
       ),
     );

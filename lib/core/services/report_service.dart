@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth_service.dart';
@@ -19,6 +21,7 @@ class DurianReportSummary {
     required this.longitude,
     required this.isApproved,
     required this.sellerPhone,
+    required this.photoUrl,
   });
 
   final String id;
@@ -35,6 +38,8 @@ class DurianReportSummary {
   final double longitude;
   final bool isApproved;
   final String sellerPhone;
+  final String photoUrl;
+
   factory DurianReportSummary.fromMap(Map<String, dynamic> map) {
     return DurianReportSummary(
       id: (map['id'] ?? '').toString(),
@@ -51,6 +56,7 @@ class DurianReportSummary {
       longitude: _toDouble(map['longitude']),
       isApproved: map['is_approved'] == true,
       sellerPhone: (map['seller_phone'] ?? '').toString(),
+      photoUrl: (map['photo_url'] ?? '').toString(),
     );
   }
 
@@ -81,6 +87,42 @@ class ReportService {
   ReportService._();
 
   static SupabaseClient get _client => SupabaseService.client;
+
+  static const String _stallImagesBucket = 'stall-images';
+
+  static Future<String> uploadReportPhoto({
+    required Uint8List bytes,
+    required String originalFileName,
+  }) async {
+    final user = AuthService.currentUser;
+
+    if (user == null) {
+      throw const AuthException('Sila log masuk untuk upload gambar gerai.');
+    }
+
+    if (bytes.isEmpty) {
+      throw const AuthException(
+        'Gambar gerai tidak sah. Sila pilih gambar lain.',
+      );
+    }
+
+    final extension = _extractImageExtension(originalFileName);
+    final storagePath =
+        'reports/${user.id}/${DateTime.now().millisecondsSinceEpoch}$extension';
+
+    await _client.storage
+        .from(_stallImagesBucket)
+        .uploadBinary(
+          storagePath,
+          bytes,
+          fileOptions: FileOptions(
+            contentType: _contentTypeForExtension(extension),
+            upsert: false,
+          ),
+        );
+
+    return _client.storage.from(_stallImagesBucket).getPublicUrl(storagePath);
+  }
 
   static Future<void> createPendingReport({
     required String spotId,
@@ -173,6 +215,7 @@ class ReportService {
       marker_label,
       stall_name,
       seller_phone,
+      photo_url,
       area,
       variety,
       price,
@@ -197,17 +240,53 @@ class ReportService {
         .limit(limit);
 
     return (response as List<dynamic>)
-        .map((item) => DurianReportSummary.fromMap(item as Map<String, dynamic>))
+        .map(
+          (item) => DurianReportSummary.fromMap(item as Map<String, dynamic>),
+        )
         .toList();
   }
 
   static Future<List<DurianReportSummary>> fetchApprovedReports({
     int limit = 20,
   }) {
-    return fetchLatestReports(
-      approvedOnly: true,
-      limit: limit,
-    );
+    return fetchLatestReports(approvedOnly: true, limit: limit);
+  }
+
+  static String _extractImageExtension(String originalFileName) {
+    final lowerName = originalFileName.toLowerCase();
+
+    if (lowerName.endsWith('.png')) {
+      return '.png';
+    }
+
+    if (lowerName.endsWith('.webp')) {
+      return '.webp';
+    }
+
+    if (lowerName.endsWith('.heic')) {
+      return '.heic';
+    }
+
+    if (lowerName.endsWith('.jpeg')) {
+      return '.jpeg';
+    }
+
+    return '.jpg';
+  }
+
+  static String _contentTypeForExtension(String extension) {
+    switch (extension) {
+      case '.png':
+        return 'image/png';
+      case '.webp':
+        return 'image/webp';
+      case '.heic':
+        return 'image/heic';
+      case '.jpeg':
+      case '.jpg':
+      default:
+        return 'image/jpeg';
+    }
   }
 
   static String _mapStockStatus(String stockStatus) {
@@ -265,6 +344,7 @@ class ReportService {
         ? cleanVariety.toUpperCase()
         : cleanVariety.substring(0, 3).toUpperCase();
   }
+
   static Future<List<DurianReportSummary>> fetchPendingReports({
     int limit = 50,
   }) async {
@@ -275,6 +355,7 @@ class ReportService {
           marker_label,
           stall_name,
           seller_phone,
+          photo_url,
           area,
           variety,
           price,
@@ -294,7 +375,9 @@ class ReportService {
         .limit(limit);
 
     return (response as List<dynamic>)
-        .map((item) => DurianReportSummary.fromMap(item as Map<String, dynamic>))
+        .map(
+          (item) => DurianReportSummary.fromMap(item as Map<String, dynamic>),
+        )
         .toList();
   }
 
@@ -305,12 +388,15 @@ class ReportService {
       throw const AuthException('ID laporan tidak sah.');
     }
 
-    await _client.from('durian_reports').update({
-      'is_approved': true,
-      'status': 'approved',
-      'status_text': 'Disahkan',
-      'updated_time': 'Baru disahkan',
-    }).eq('id', trimmedId);
+    await _client
+        .from('durian_reports')
+        .update({
+          'is_approved': true,
+          'status': 'approved',
+          'status_text': 'Disahkan',
+          'updated_time': 'Baru disahkan',
+        })
+        .eq('id', trimmedId);
   }
 
   static Future<void> rejectReport(String reportId) async {
@@ -320,12 +406,15 @@ class ReportService {
       throw const AuthException('ID laporan tidak sah.');
     }
 
-    await _client.from('durian_reports').update({
-      'is_approved': false,
-      'status': 'rejected',
-      'status_text': 'Ditolak',
-      'updated_time': 'Baru ditolak',
-    }).eq('id', trimmedId);
+    await _client
+        .from('durian_reports')
+        .update({
+          'is_approved': false,
+          'status': 'rejected',
+          'status_text': 'Ditolak',
+          'updated_time': 'Baru ditolak',
+        })
+        .eq('id', trimmedId);
   }
 
   static String getReadableError(Object error) {
@@ -340,5 +429,3 @@ class ReportService {
     return 'Laporan gagal diproses. Sila cuba lagi.';
   }
 }
-
-
