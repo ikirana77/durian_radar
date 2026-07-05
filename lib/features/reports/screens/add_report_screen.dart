@@ -11,7 +11,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../auth/screens/login_register_screen.dart';
+import '../../profile/screens/profile_screen.dart';
 import 'location_picker_screen.dart';
 
 class AddReportScreen extends StatefulWidget {
@@ -259,7 +259,7 @@ class _AddReportScreenState extends State<AddReportScreen> {
 
     return Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (context) => const LoginRegisterScreen()),
+      MaterialPageRoute(builder: (context) => const ProfileScreen()),
     );
   }
 
