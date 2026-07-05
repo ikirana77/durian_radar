@@ -41,9 +41,7 @@ class _FreshListScreenState extends State<FreshListScreen> {
   Future<void> _openAddReportScreen() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const AddReportScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const AddReportScreen()),
     );
 
     if (!mounted) {
@@ -63,10 +61,7 @@ class _FreshListScreenState extends State<FreshListScreen> {
         centerTitle: false,
         title: const Text(
           'Fresh List',
-          style: TextStyle(
-            color: _darkGreen,
-            fontWeight: FontWeight.w900,
-          ),
+          style: TextStyle(color: _darkGreen, fontWeight: FontWeight.w900),
         ),
         actions: [
           IconButton(
@@ -74,15 +69,10 @@ class _FreshListScreenState extends State<FreshListScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const ProfileScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
               );
             },
-            icon: const Icon(
-              Icons.person_rounded,
-              color: _green,
-            ),
+            icon: const Icon(Icons.person_rounded, color: _green),
           ),
           const SizedBox(width: 8),
         ],
@@ -123,23 +113,20 @@ class _FreshListScreenState extends State<FreshListScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(
-                    child: _HeaderCard(
-                      totalReports: reports.length,
-                    ),
+                    child: _HeaderCard(totalReports: reports.length),
                   ),
                   if (reports.isEmpty)
                     SliverFillRemaining(
                       hasScrollBody: false,
-                      child: _EmptyView(
-                        onAddReport: _openAddReportScreen,
-                      ),
+                      child: _EmptyView(onAddReport: _openAddReportScreen),
                     )
                   else
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(18, 8, 18, 120),
                       sliver: SliverList.separated(
                         itemCount: reports.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 12),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final report = reports[index];
 
@@ -148,15 +135,12 @@ class _FreshListScreenState extends State<FreshListScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => PinDetailScreen(
-                                    report: report,
-                                  ),
+                                  builder: (_) =>
+                                      PinDetailScreen(report: report),
                                 ),
                               );
                             },
-                            child: _FreshReportCard(
-                              report: report,
-                            ),
+                            child: _FreshReportCard(report: report),
                           );
                         },
                       ),
@@ -172,9 +156,7 @@ class _FreshListScreenState extends State<FreshListScreen> {
 }
 
 class _HeaderCard extends StatelessWidget {
-  const _HeaderCard({
-    required this.totalReports,
-  });
+  const _HeaderCard({required this.totalReports});
 
   final int totalReports;
 
@@ -193,9 +175,7 @@ class _HeaderCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(26),
-          border: Border.all(
-            color: const Color(0xFFE8DEC3),
-          ),
+          border: Border.all(color: const Color(0xFFE8DEC3)),
           boxShadow: const [
             BoxShadow(
               color: Color.fromRGBO(47, 107, 63, 0.10),
@@ -213,11 +193,7 @@ class _HeaderCard extends StatelessWidget {
                 color: _yellow,
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: const Icon(
-                Icons.eco_rounded,
-                color: _darkGreen,
-                size: 30,
-              ),
+              child: const Icon(Icons.eco_rounded, color: _darkGreen, size: 30),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -245,10 +221,7 @@ class _HeaderCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.cloud_done_rounded,
-              color: _green,
-            ),
+            const Icon(Icons.cloud_done_rounded, color: _green),
           ],
         ),
       ),
@@ -257,9 +230,7 @@ class _HeaderCard extends StatelessWidget {
 }
 
 class _FreshReportCard extends StatelessWidget {
-  const _FreshReportCard({
-    required this.report,
-  });
+  const _FreshReportCard({required this.report});
 
   final DurianReportSummary report;
 
@@ -280,9 +251,7 @@ class _FreshReportCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8DEC3),
-        ),
+        border: Border.all(color: const Color(0xFFE8DEC3)),
         boxShadow: const [
           BoxShadow(
             color: Color.fromRGBO(47, 107, 63, 0.08),
@@ -336,6 +305,10 @@ class _FreshReportCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (report.photoUrl.trim().isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _FreshReportPhoto(photoUrl: report.photoUrl.trim()),
+                ],
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
@@ -444,6 +417,93 @@ class _FreshReportCard extends StatelessWidget {
   }
 }
 
+class _FreshReportPhoto extends StatelessWidget {
+  const _FreshReportPhoto({required this.photoUrl});
+
+  final String photoUrl;
+
+  static const Color _green = Color(0xFF2F6B3F);
+  static const Color _darkGreen = Color(0xFF17412A);
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
+        children: [
+          Image.network(
+            photoUrl,
+            width: double.infinity,
+            height: 112,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) {
+                return child;
+              }
+
+              return Container(
+                width: double.infinity,
+                height: 112,
+                color: const Color(0xFFFFFAEC),
+                child: const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: _green,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: double.infinity,
+                height: 112,
+                color: const Color(0xFFFFFAEC),
+                child: const Center(
+                  child: Icon(
+                    Icons.broken_image_outlined,
+                    color: _green,
+                    size: 30,
+                  ),
+                ),
+              );
+            },
+          ),
+          Positioned(
+            left: 8,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.photo_camera_rounded, color: _green, size: 13),
+                  SizedBox(width: 4),
+                  Text(
+                    'Gambar',
+                    style: TextStyle(
+                      color: _darkGreen,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MarkerBadge extends StatelessWidget {
   const _MarkerBadge({
     required this.label,
@@ -463,10 +523,7 @@ class _MarkerBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: foregroundColor,
-          width: 1.4,
-        ),
+        border: Border.all(color: foregroundColor, width: 1.4),
       ),
       child: Center(
         child: Text(
@@ -499,10 +556,7 @@ class _MiniChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
@@ -510,11 +564,7 @@ class _MiniChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 15,
-            color: foregroundColor,
-          ),
+          Icon(icon, size: 15, color: foregroundColor),
           const SizedBox(width: 5),
           Text(
             label,
@@ -552,16 +602,11 @@ class _LoadingView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(
-            color: _green,
-          ),
+          CircularProgressIndicator(color: _green),
           SizedBox(height: 14),
           Text(
             'Memuatkan laporan durian...',
-            style: TextStyle(
-              color: _darkGreen,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(color: _darkGreen, fontWeight: FontWeight.w800),
           ),
         ],
       ),
@@ -570,10 +615,7 @@ class _LoadingView extends StatelessWidget {
 }
 
 class _ErrorView extends StatelessWidget {
-  const _ErrorView({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorView({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
@@ -591,9 +633,7 @@ class _ErrorView extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: const Color(0xFFE8DEC3),
-            ),
+            border: Border.all(color: const Color(0xFFE8DEC3)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -617,10 +657,7 @@ class _ErrorView extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF6F776F),
-                  height: 1.35,
-                ),
+                style: const TextStyle(color: Color(0xFF6F776F), height: 1.35),
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
@@ -641,9 +678,7 @@ class _ErrorView extends StatelessWidget {
 }
 
 class _EmptyView extends StatelessWidget {
-  const _EmptyView({
-    required this.onAddReport,
-  });
+  const _EmptyView({required this.onAddReport});
 
   final VoidCallback onAddReport;
 
@@ -661,9 +696,7 @@ class _EmptyView extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(26),
-            border: Border.all(
-              color: const Color(0xFFE8DEC3),
-            ),
+            border: Border.all(color: const Color(0xFFE8DEC3)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -695,10 +728,7 @@ class _EmptyView extends StatelessWidget {
               const Text(
                 'Hantar laporan pertama supaya komuniti boleh tahu lokasi durian terkini.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF6F776F),
-                  height: 1.35,
-                ),
+                style: TextStyle(color: Color(0xFF6F776F), height: 1.35),
               ),
               const SizedBox(height: 18),
               FilledButton.icon(
@@ -724,6 +754,3 @@ class _EmptyView extends StatelessWidget {
     );
   }
 }
-
-
-

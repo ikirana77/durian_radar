@@ -4,10 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/report_service.dart';
 
 class PinDetailScreen extends StatelessWidget {
-  const PinDetailScreen({
-    super.key,
-    required this.report,
-  });
+  const PinDetailScreen({super.key, required this.report});
 
   final DurianReportSummary report;
 
@@ -30,9 +27,7 @@ class PinDetailScreen extends StatelessWidget {
         foregroundColor: _darkGreen,
         title: const Text(
           'Butiran Lokasi',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
       body: SafeArea(
@@ -45,6 +40,10 @@ class PinDetailScreen extends StatelessWidget {
               stallName: report.stallName,
               area: report.area,
             ),
+            if (report.photoUrl.trim().isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _StallPhotoCard(photoUrl: report.photoUrl.trim()),
+            ],
             const SizedBox(height: 16),
             _MainInfoCard(
               report: report,
@@ -87,6 +86,97 @@ class PinDetailScreen extends StatelessWidget {
   }
 }
 
+class _StallPhotoCard extends StatelessWidget {
+  const _StallPhotoCard({required this.photoUrl});
+
+  final String photoUrl;
+
+  static const Color _green = Color(0xFF2F6B3F);
+  static const Color _darkGreen = Color(0xFF17412A);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: const Color(0xFFE8DEC3)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(47, 107, 63, 0.10),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Image.network(
+            photoUrl,
+            width: double.infinity,
+            height: 240,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) {
+                return child;
+              }
+
+              return Container(
+                width: double.infinity,
+                height: 240,
+                color: const Color(0xFFFFFAEC),
+                child: const Center(
+                  child: CircularProgressIndicator(color: _green),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: double.infinity,
+                height: 190,
+                color: const Color(0xFFFFFAEC),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.broken_image_outlined, color: _green, size: 40),
+                    SizedBox(height: 8),
+                    Text(
+                      'Gambar gerai tidak dapat dipaparkan',
+                      style: TextStyle(
+                        color: _darkGreen,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(18, 14, 18, 16),
+            child: Row(
+              children: [
+                Icon(Icons.photo_camera_rounded, color: _green, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Gambar Gerai / Papan Harga',
+                  style: TextStyle(
+                    color: _darkGreen,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _HeroMapCard extends StatelessWidget {
   const _HeroMapCard({
     required this.markerLabel,
@@ -123,21 +213,14 @@ class _HeroMapCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _DetailMapPainter(),
-            ),
-          ),
+          Positioned.fill(child: CustomPaint(painter: _DetailMapPainter())),
           Positioned(
             top: 60,
             left: 0,
             right: 0,
             child: Column(
               children: [
-                _LargeMarker(
-                  label: markerLabel,
-                  color: markerColor,
-                ),
+                _LargeMarker(label: markerLabel, color: markerColor),
                 const SizedBox(height: 10),
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 22),
@@ -302,9 +385,7 @@ class _MainInfoCard extends StatelessWidget {
 }
 
 class _CommunityTrustCard extends StatelessWidget {
-  const _CommunityTrustCard({
-    required this.report,
-  });
+  const _CommunityTrustCard({required this.report});
 
   final DurianReportSummary report;
 
@@ -369,9 +450,7 @@ class _CommunityTrustCard extends StatelessWidget {
 }
 
 class _ActionPanel extends StatelessWidget {
-  const _ActionPanel({
-    required this.report,
-  });
+  const _ActionPanel({required this.report});
 
   final DurianReportSummary report;
 
@@ -386,9 +465,7 @@ class _ActionPanel extends StatelessWidget {
     if (latitude == 0 || longitude == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Koordinat lokasi belum tersedia untuk laporan ini.',
-          ),
+          content: Text('Koordinat lokasi belum tersedia untuk laporan ini.'),
         ),
       );
       return;
@@ -398,18 +475,11 @@ class _ActionPanel extends StatelessWidget {
       'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
     );
 
-    final launched = await launchUrl(
-      uri,
-      mode: LaunchMode.externalApplication,
-    );
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
 
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Tidak dapat membuka Google Maps.',
-          ),
-        ),
+        const SnackBar(content: Text('Tidak dapat membuka Google Maps.')),
       );
     }
   }
@@ -432,22 +502,13 @@ class _ActionPanel extends StatelessWidget {
       'Hai, saya jumpa lokasi durian anda melalui aplikasi Durian Radar. Masih ada stok?',
     );
 
-    final uri = Uri.parse(
-      'https://wa.me/$normalizedPhone?text=$message',
-    );
+    final uri = Uri.parse('https://wa.me/$normalizedPhone?text=$message');
 
-    final launched = await launchUrl(
-      uri,
-      mode: LaunchMode.externalApplication,
-    );
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
 
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Tidak dapat membuka WhatsApp.',
-          ),
-        ),
+        const SnackBar(content: Text('Tidak dapat membuka WhatsApp.')),
       );
     }
   }
@@ -512,7 +573,9 @@ class _ActionPanel extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   icon: Icon(
-                    hasPhone ? Icons.chat_rounded : Icons.phone_disabled_rounded,
+                    hasPhone
+                        ? Icons.chat_rounded
+                        : Icons.phone_disabled_rounded,
                   ),
                   label: Text(
                     hasPhone ? 'WhatsApp' : 'Hubungi',
@@ -541,12 +604,9 @@ class _ActionPanel extends StatelessWidget {
 }
 
 class _WhiteCard extends StatelessWidget {
-  const _WhiteCard({
-    required this.child,
-  });
+  const _WhiteCard({required this.child});
 
   final Widget child;
-
 
   @override
   Widget build(BuildContext context) {
@@ -571,10 +631,7 @@ class _WhiteCard extends StatelessWidget {
 }
 
 class _LargeMarker extends StatelessWidget {
-  const _LargeMarker({
-    required this.label,
-    required this.color,
-  });
+  const _LargeMarker({required this.label, required this.color});
 
   final String label;
   final Color color;
@@ -607,11 +664,7 @@ class _LargeMarker extends StatelessWidget {
           ),
           Positioned(
             top: 5,
-            child: Icon(
-              Icons.location_on_rounded,
-              size: 76,
-              color: color,
-            ),
+            child: Icon(Icons.location_on_rounded, size: 76, color: color),
           ),
           Positioned(
             top: 28,
@@ -631,9 +684,7 @@ class _LargeMarker extends StatelessWidget {
 }
 
 class _MapPill extends StatelessWidget {
-  const _MapPill({
-    required this.label,
-  });
+  const _MapPill({required this.label});
 
   final String label;
 
@@ -642,10 +693,7 @@ class _MapPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(999),
@@ -653,11 +701,7 @@ class _MapPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.cloud_done_rounded,
-            color: _green,
-            size: 16,
-          ),
+          const Icon(Icons.cloud_done_rounded, color: _green, size: 16),
           const SizedBox(width: 5),
           Text(
             label,
@@ -689,10 +733,7 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
@@ -700,11 +741,7 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 15,
-            color: foregroundColor,
-          ),
+          Icon(icon, size: 15, color: foregroundColor),
           const SizedBox(width: 5),
           Text(
             label,
@@ -739,11 +776,7 @@ class _DetailRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color: _green,
-          size: 22,
-        ),
+        Icon(icon, color: _green, size: 22),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -862,6 +895,3 @@ class _DetailMapPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-
-
