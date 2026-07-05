@@ -338,15 +338,17 @@ class _PendingReportCard extends StatelessWidget {
       return;
     }
 
-    final uri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=${report.latitude},${report.longitude}',
-    );
+    final uri = Uri.https('waze.com', '/ul', {
+      'll': '${report.latitude},${report.longitude}',
+      'navigate': 'yes',
+      'utm_source': 'durian_radar_admin',
+    });
 
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
 
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tidak dapat membuka Google Maps.')),
+        const SnackBar(content: Text('Tidak dapat membuka Waze.')),
       );
     }
   }
@@ -531,9 +533,9 @@ class _PendingReportCard extends StatelessWidget {
                           side: const BorderSide(color: _green),
                           padding: const EdgeInsets.symmetric(vertical: 11),
                         ),
-                        icon: const Icon(Icons.map_rounded),
+                        icon: const Icon(Icons.directions_car_filled_rounded),
                         label: const Text(
-                          'Semak Map',
+                          'Semak Waze',
                           style: TextStyle(fontWeight: FontWeight.w900),
                         ),
                       ),
