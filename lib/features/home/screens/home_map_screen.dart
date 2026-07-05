@@ -525,18 +525,18 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
 
                       Positioned(
                         left: 12,
-                        right: 12,
+                        right: 168,
                         top: 10,
                         child: _MapHintBanner(
                           text: _currentLocation == null
-                              ? 'Tekan butang lokasi untuk center map'
-                              : 'Map sekitar lokasi semasa anda',
+                              ? 'Tekan lokasi untuk center map'
+                              : 'Map sekitar anda',
                         ),
                       ),
 
                       Positioned(
                         right: 12,
-                        top: 76,
+                        top: 116,
                         child: _MapControlColumn(
                           isLocating: _isLocating,
                           onLocateTap: _centerToCurrentLocation,
@@ -810,21 +810,31 @@ class _SearchBox extends StatelessWidget {
       child: TextField(
         controller: controller,
         onChanged: onChanged,
+        textAlignVertical: TextAlignVertical.center,
         textInputAction: TextInputAction.search,
+        style: const TextStyle(
+          color: _DRColors.textDark,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          height: 1,
+        ),
         decoration: const InputDecoration(
+          isDense: true,
           hintText: 'Cari lokasi durian...',
           hintStyle: TextStyle(
             color: _DRColors.textMuted,
             fontSize: 13,
             fontWeight: FontWeight.w600,
+            height: 1,
           ),
           prefixIcon: Icon(
             Icons.search_rounded,
             color: _DRColors.textMuted,
             size: 20,
           ),
+          prefixIconConstraints: BoxConstraints(minWidth: 44, minHeight: 44),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 12),
+          contentPadding: EdgeInsets.zero,
         ),
       ),
     );
@@ -999,37 +1009,44 @@ class _MapHintBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.topLeft,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: _DRColors.cardWhite.withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(999),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.info_outline_rounded,
-              color: _DRColors.durianGreen,
-              size: 18,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              text,
-              style: const TextStyle(
-                color: _DRColors.textDark,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 250),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: _DRColors.cardWhite.withValues(alpha: 0.96),
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.info_outline_rounded,
+                color: _DRColors.durianGreen,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _DRColors.textDark,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
