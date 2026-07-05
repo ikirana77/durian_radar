@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/services/favorite_service.dart';
 import '../../../core/services/report_service.dart';
 
 class PinDetailScreen extends StatelessWidget {
@@ -22,6 +23,10 @@ class PinDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: _cream,
       appBar: AppBar(
+        actions: [
+          _DetailFavoriteButton(report: report),
+          const SizedBox(width: 8),
+        ],
         backgroundColor: _cream,
         elevation: 0,
         foregroundColor: _darkGreen,
@@ -896,4 +901,93 @@ class _DetailMapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _DetailFavoriteButton extends StatefulWidget {
+  const _DetailFavoriteButton({required this.report});
+
+  final DurianReportSummary report;
+
+  @override
+  State<_DetailFavoriteButton> createState() => _DetailFavoriteButtonState();
+}
+
+class _DetailFavoriteButtonState extends State<_DetailFavoriteButton> {
+  bool _isFavorite = false;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavoriteStatus();
+  }
+
+  Future<void> _loadFavoriteStatus() async {
+    final isFavorite = await FavoriteService.isFavorite(widget.report);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isFavorite = isFavorite;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_isLoading) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final isNowFavorite = await FavoriteService.toggleReport(widget.report);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isFavorite = isNowFavorite;
+      _isLoading = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isNowFavorite
+              ? '${widget.report.stallName} ditambah ke Kegemaran.'
+              : '${widget.report.stallName} dibuang daripada Kegemaran.',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: _isFavorite ? 'Buang daripada Kegemaran' : 'Tambah Kegemaran',
+      onPressed: _isLoading ? null : _toggleFavorite,
+      icon: _isLoading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFF2C7A35),
+              ),
+            )
+          : Icon(
+              _isFavorite
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              color: _isFavorite
+                  ? const Color(0xFFE94B46)
+                  : const Color(0xFF2C7A35),
+            ),
+    );
+  }
 }

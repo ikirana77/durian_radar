@@ -5,8 +5,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 
+import '../../../core/services/favorite_service.dart';
 import '../../../core/services/report_service.dart';
 import '../../admin/screens/admin_review_screen.dart';
+import '../../favorites/screens/favorites_screen.dart';
 import '../../fresh/screens/fresh_list_screen.dart';
 import '../../pin_detail/screens/pin_detail_screen.dart';
 import '../../profile/screens/profile_screen.dart';
@@ -32,12 +34,14 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
   LatLng? _currentLocation;
   bool _isLocating = false;
   _HomeFilter _selectedFilter = _HomeFilter.all;
+  Set<String> _favoriteKeys = <String>{};
   int _mapFilterRevision = 0;
 
   @override
   void initState() {
     super.initState();
     _reportsFuture = _loadReports();
+    _loadFavoriteKeys();
   }
 
   @override
@@ -55,6 +59,59 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
       _reportsFuture = _loadReports();
     });
     await _reportsFuture;
+  }
+
+  Future<void> _loadFavoriteKeys() async {
+    final keys = await FavoriteService.fetchFavoriteKeys();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _favoriteKeys = keys;
+    });
+  }
+
+  bool _isFavorite(DurianReportSummary report) {
+    return _favoriteKeys.contains(FavoriteService.keyForReport(report));
+  }
+
+  Future<void> _toggleFavorite(DurianReportSummary report) async {
+    final isNowFavorite = await FavoriteService.toggleReport(report);
+
+    if (!mounted) {
+      return;
+    }
+
+    await _loadFavoriteKeys();
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isNowFavorite
+              ? '${report.stallName} ditambah ke Kegemaran.'
+              : '${report.stallName} dibuang daripada Kegemaran.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openFavoritesScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const FavoritesScreen()),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _loadFavoriteKeys();
   }
 
   Future<void> _openAddReportScreen() async {
@@ -523,6 +580,12 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
                           stockLabel: previewReport == null
                               ? null
                               : _stockLabel(previewReport.stockStatus),
+                          isFavorite:
+                              previewReport != null &&
+                              _isFavorite(previewReport),
+                          onFavoriteTap: previewReport == null
+                              ? null
+                              : () => _toggleFavorite(previewReport),
                         ),
                       ),
                     ],
@@ -537,9 +600,7 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
         onFreshTap: _openFreshListScreen,
         onMapTap: () {},
         onReportTap: _openAddReportScreen,
-        onFavouriteTap: () {
-          _showSnack('Kegemaran akan ditambah dalam versi seterusnya.');
-        },
+        onFavouriteTap: _openFavoritesScreen,
         onProfileTap: _openProfileScreen,
       ),
     );
@@ -1152,6 +1213,8 @@ class _HomeFreshPreviewCard extends StatelessWidget {
     required this.onCardTap,
     required this.distanceText,
     required this.stockLabel,
+    required this.isFavorite,
+    required this.onFavoriteTap,
   });
 
   final DurianReportSummary? report;
@@ -1161,6 +1224,8 @@ class _HomeFreshPreviewCard extends StatelessWidget {
   final VoidCallback? onCardTap;
   final String? distanceText;
   final String? stockLabel;
+  final bool isFavorite;
+  final VoidCallback? onFavoriteTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1367,19 +1432,24 @@ class _HomeFreshPreviewCard extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        _FavoriteMiniButton(
+                          isFavorite: isFavorite,
+                          onTap: onFavoriteTap,
+                        ),
+                        const SizedBox(height: 5),
                         Text(
                           distanceText ?? '—',
                           style: const TextStyle(
                             color: _DRColors.freshGreen,
-                            fontSize: 13,
+                            fontSize: 12.5,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 5),
                         const Icon(
                           Icons.chevron_right_rounded,
                           color: _DRColors.textMuted,
-                          size: 24,
+                          size: 22,
                         ),
                       ],
                     ),
@@ -1402,6 +1472,34 @@ class _HomeFreshPreviewCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _FavoriteMiniButton extends StatelessWidget {
+  const _FavoriteMiniButton({required this.isFavorite, required this.onTap});
+
+  final bool isFavorite;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isFavorite ? _DRColors.soldOutRed : _DRColors.creamSoft,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: Icon(
+            isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            color: isFavorite ? Colors.white : _DRColors.textMuted,
+            size: 19,
+          ),
+        ),
       ),
     );
   }
