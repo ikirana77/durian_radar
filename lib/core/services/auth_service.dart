@@ -48,13 +48,12 @@ class AuthService {
     }
 
     if (password.length < 6) {
-      throw const AuthException('Kata laluan mesti sekurang-kurangnya 6 aksara.');
+      throw const AuthException(
+        'Kata laluan mesti sekurang-kurangnya 6 aksara.',
+      );
     }
 
-    return _client.auth.signUp(
-      email: normalizedEmail,
-      password: password,
-    );
+    return _client.auth.signUp(email: normalizedEmail, password: password);
   }
 
   static Future<void> signOut() async {

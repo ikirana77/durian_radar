@@ -80,9 +80,7 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
         if (!mounted) return;
 
         if (response.session != null) {
-          _showStatus(
-            'Akaun berjaya didaftarkan dan anda telah log masuk.',
-          );
+          _showStatus('Akaun berjaya didaftarkan dan anda telah log masuk.');
 
           await Future<void>.delayed(const Duration(milliseconds: 900));
 
@@ -131,10 +129,7 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
 
       if (!mounted) return;
 
-      _showStatus(
-        AuthService.getReadableError(error),
-        isError: true,
-      );
+      _showStatus(AuthService.getReadableError(error), isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -152,9 +147,7 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
 
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _toggleAuthMode(bool registerMode) {
@@ -315,10 +308,7 @@ class _HeroIllustration extends StatelessWidget {
 }
 
 class _PersonBubble extends StatelessWidget {
-  const _PersonBubble({
-    required this.icon,
-    required this.label,
-  });
+  const _PersonBubble({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
@@ -425,10 +415,7 @@ class _AuthCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.s),
           if (statusMessage != null) ...[
-            _StatusBox(
-              message: statusMessage!,
-              isError: isStatusError,
-            ),
+            _StatusBox(message: statusMessage!, isError: isStatusError),
             const SizedBox(height: AppSpacing.s),
           ],
           if (!isRegisterMode)
@@ -507,10 +494,7 @@ class _AuthCard extends StatelessWidget {
 }
 
 class _StatusBox extends StatelessWidget {
-  const _StatusBox({
-    required this.message,
-    required this.isError,
-  });
+  const _StatusBox({required this.message, required this.isError});
 
   final String message;
   final bool isError;

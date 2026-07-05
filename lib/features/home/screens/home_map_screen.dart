@@ -432,7 +432,7 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
             'Durian Radar membantu pengguna mencari gerai durian aktif.',
             'Data lokasi dikemas kini melalui laporan komuniti.',
             'Admin boleh menyemak dan mengesahkan laporan sebelum dipaparkan.',
-            'Dibangunkan oleh: Mdm Intan, Nazlah, Nabilah, Qausar dan Sharizat, pasukan pembangun aplikasi dari Kolej Vokasional Kuala Selangor.',
+            'Dibangunkan oleh: Mdm Intan, Nazlah, Hanum, Qausar dan Sharizat, pasukan pembangun aplikasi dari Kolej Vokasional Kuala Selangor.',
             'Versi ini dibangunkan untuk demo aplikasi dan pengujian awal.',
           ],
         );

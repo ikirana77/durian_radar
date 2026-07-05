@@ -1,0 +1,13 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/durian_logo.png"
+
+  adaptive_icon_background: "#F8F7F1"
+  adaptive_icon_foreground: "assets/images/durian_logo.png"
+  adaptive_icon_foreground_inset: 18
+
+  remove_alpha_ios: true
+  background_color_ios: "#F8F7F1"
+
+  min_sdk_android: 23

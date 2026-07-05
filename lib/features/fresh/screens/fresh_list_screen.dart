@@ -212,7 +212,7 @@ class _HeaderCard extends StatelessWidget {
                   Text(
                     totalReports == 0
                         ? 'Belum ada laporan untuk dipaparkan.'
-                        : '$totalReports laporan dimuatkan daripada Supabase.',
+                        : '$totalReports laporan komuniti tersedia sekarang.',
                     style: const TextStyle(
                       color: _textMuted,
                       fontWeight: FontWeight.w600,

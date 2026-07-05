@@ -8,10 +8,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 
 class LocationPickerResult {
-  const LocationPickerResult({
-    required this.latitude,
-    required this.longitude,
-  });
+  const LocationPickerResult({required this.latitude, required this.longitude});
 
   final double latitude;
   final double longitude;
@@ -37,10 +34,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedPoint = LatLng(
-      widget.initialLatitude,
-      widget.initialLongitude,
-    );
+    _selectedPoint = LatLng(widget.initialLatitude, widget.initialLongitude);
   }
 
   void _confirmLocation() {
@@ -115,9 +109,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             padding: const EdgeInsets.all(AppSpacing.l),
             decoration: const BoxDecoration(
               color: AppColors.softCardWhite,
-              border: Border(
-                top: BorderSide(color: AppColors.borderSoft),
-              ),
+              border: Border(top: BorderSide(color: AppColors.borderSoft)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
